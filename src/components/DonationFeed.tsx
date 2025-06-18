@@ -4,25 +4,19 @@ import { motion } from 'framer-motion';
 import { Activity } from 'lucide-react';
 import { Donation } from '../data/mockData';
 import DonationItem from './DonationItem';
+import { slideUpVariants, staggerContainerVariants } from '../types/animations';
 
 interface DonationFeedProps {
   donations: Donation[];
 }
 
 const DonationFeed: React.FC<DonationFeedProps> = ({ donations }) => {
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: { staggerChildren: 0.1 }
-    }
-  };
-
   return (
     <motion.div 
       className="bg-gradient-to-br from-gray-900/50 via-black/80 to-gray-900/50 rounded-2xl border border-gray-700/50 p-6 backdrop-blur-sm"
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
+      variants={slideUpVariants}
+      initial="hidden"
+      animate="visible"
       transition={{ delay: 0.4 }}
     >
       <div className="flex items-center space-x-3 mb-6">
@@ -35,7 +29,7 @@ const DonationFeed: React.FC<DonationFeedProps> = ({ donations }) => {
 
       <motion.div 
         className="space-y-4 max-h-96 overflow-y-auto"
-        variants={containerVariants}
+        variants={staggerContainerVariants}
         initial="hidden"
         animate="visible"
       >

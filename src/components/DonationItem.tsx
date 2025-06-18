@@ -3,6 +3,7 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { DollarSign, Zap, MessageCircle } from 'lucide-react';
 import { Donation } from '../data/mockData';
+import { staggerItemVariants } from '../types/animations';
 
 interface DonationItemProps {
   donation: Donation;
@@ -10,19 +11,11 @@ interface DonationItemProps {
 }
 
 const DonationItem: React.FC<DonationItemProps> = ({ donation, index }) => {
-  const itemVariants = {
-    hidden: { opacity: 0, x: -20 },
-    visible: { 
-      opacity: 1, 
-      x: 0,
-      transition: { delay: index * 0.05 }
-    }
-  };
-
   return (
     <motion.div
       className="group bg-gray-800/30 hover:bg-gray-800/50 rounded-xl border border-gray-700/30 hover:border-cyan-400/30 p-4 transition-all duration-300"
-      variants={itemVariants}
+      variants={staggerItemVariants}
+      custom={index}
       whileHover={{ scale: 1.02 }}
     >
       <div className="flex items-start justify-between mb-3">

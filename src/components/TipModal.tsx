@@ -4,6 +4,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { Send, Zap, X, DollarSign } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { Artist } from '../data/mockData';
+import { fadeVariants, modalVariants, springTransition, smoothTransition } from '../types/animations';
 
 interface TipModalProps {
   isOpen: boolean;
@@ -58,27 +59,6 @@ const TipModal: React.FC<TipModalProps> = ({ isOpen, onClose, artist, onTip }) =
 
   const quickAmounts = [10, 25, 50, 100];
 
-  const backdropVariants = {
-    hidden: { opacity: 0 },
-    visible: { opacity: 1 },
-  };
-
-  const modalVariants = {
-    hidden: { scale: 0.9, opacity: 0, y: 50 },
-    visible: { 
-      scale: 1, 
-      opacity: 1, 
-      y: 0, 
-      transition: { type: 'spring', stiffness: 300, damping: 30 } 
-    },
-    exit: { 
-      scale: 0.9, 
-      opacity: 0, 
-      y: 50, 
-      transition: { duration: 0.2 } 
-    },
-  };
-
   if (!artist) return null;
 
   return (
@@ -86,7 +66,7 @@ const TipModal: React.FC<TipModalProps> = ({ isOpen, onClose, artist, onTip }) =
       {isOpen && (
         <motion.div
           className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4"
-          variants={backdropVariants}
+          variants={fadeVariants}
           initial="hidden"
           animate="visible"
           exit="hidden"
@@ -98,6 +78,7 @@ const TipModal: React.FC<TipModalProps> = ({ isOpen, onClose, artist, onTip }) =
             initial="hidden"
             animate="visible"
             exit="exit"
+            transition={springTransition}
             onClick={(e) => e.stopPropagation()}
           >
             <button 

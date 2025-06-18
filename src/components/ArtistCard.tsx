@@ -3,6 +3,7 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { Send, Zap, TrendingUp } from 'lucide-react';
 import { Artist } from '../data/mockData';
+import { slideUpVariants } from '../types/animations';
 
 interface ArtistCardProps {
   artist: Artist;
@@ -12,21 +13,13 @@ interface ArtistCardProps {
 }
 
 const ArtistCard: React.FC<ArtistCardProps> = ({ artist, onTip, walletConnected, index }) => {
-  const cardVariants = {
-    hidden: { opacity: 0, y: 20 },
-    visible: { 
-      opacity: 1, 
-      y: 0,
-      transition: { delay: index * 0.1, duration: 0.5 }
-    }
-  };
-
   return (
     <motion.div
       className="group bg-gradient-to-br from-gray-900/80 via-black/90 to-gray-900/80 rounded-2xl border border-gray-700/50 hover:border-cyan-400/50 p-6 transition-all duration-500 backdrop-blur-sm relative overflow-hidden"
-      variants={cardVariants}
+      variants={slideUpVariants}
       initial="hidden"
       animate="visible"
+      transition={{ delay: index * 0.1, duration: 0.5 }}
       whileHover={{ 
         scale: 1.02,
         boxShadow: "0 20px 40px rgba(0, 255, 255, 0.1)"
