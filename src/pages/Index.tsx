@@ -11,6 +11,9 @@ import Leaderboard from '../components/Leaderboard';
 import UserStats from '../components/UserStats';
 import TipModal from '../components/TipModal';
 import BackgroundFX from '../components/BackgroundFX';
+import SeasonBanner from '../components/SeasonBanner';
+import ActivityFeed from '../components/ActivityFeed';
+import DailyMissions from '../components/DailyMissions';
 
 const Index = () => {
   const [walletConnected, setWalletConnected] = useState(false);
@@ -52,6 +55,10 @@ const Index = () => {
   const handleTip = (amount: number, message: string) => {
     if (!selectedArtist) return;
 
+    // Apply season multiplier
+    const seasonMultiplier = 1.5;
+    const bonusStakingPower = Math.floor(amount * (seasonMultiplier - 1));
+
     const newDonation: Donation = {
       id: donations.length + 1,
       artist: selectedArtist.name,
@@ -59,21 +66,30 @@ const Index = () => {
       amount: amount.toString(),
       message: message || 'RESPECT THE CODE! Keep the rebellion alive! ⚡🔥',
       timestamp: 'JUST NOW',
-      stakingPower: amount
+      stakingPower: amount + bonusStakingPower
     };
     
     // Update donations feed
     setDonations(prev => [newDonation, ...prev]);
     
-    // Update user staking power
-    setUserStakingPower(prev => prev + amount);
+    // Update user staking power with season bonus
+    setUserStakingPower(prev => prev + amount + bonusStakingPower);
     
     // Update artist stats
     setArtists(prev => prev.map(artist => 
       artist.id === selectedArtist.id 
-        ? { ...artist, totalTips: artist.totalTips + 1, stakingPower: artist.stakingPower + amount }
+        ? { ...artist, totalTips: artist.totalTips + 1, stakingPower: artist.stakingPower + amount + bonusStakingPower }
         : artist
     ));
+
+    // Show season bonus notification
+    if (bonusStakingPower > 0) {
+      toast.success(`¡BONUS TEMPORAL! +${bonusStakingPower} SP extra por el evento`, {
+        icon: '🎉',
+        style: { background: '#111', color: '#f59e0b' },
+        duration: 4000
+      });
+    }
     
     handleCloseModal();
   };
@@ -99,14 +115,19 @@ const Index = () => {
       />
       
       <main className="max-w-7xl mx-auto px-4 py-8 relative z-10">
+        {/* Season Banner */}
+        <div className="mb-8">
+          <SeasonBanner />
+        </div>
+
         <motion.div 
-          className="grid grid-cols-1 lg:grid-cols-3 gap-8"
+          className="grid grid-cols-1 lg:grid-cols-4 gap-8"
           variants={containerVariants}
           initial="hidden"
           animate="visible"
         >
           {/* Main Content Area */}
-          <div className="lg:col-span-2 space-y-8">
+          <div className="lg:col-span-3 space-y-8">
             {/* Artist Spotlight Section */}
             <motion.div 
               className="space-y-6"
@@ -129,7 +150,7 @@ const Index = () => {
                 </p>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-1 gap-6">
+              <div className="grid grid-cols-1 xl:grid-cols-1 gap-6">
                 {artists.map((artist, index) => (
                   <ArtistCard
                     key={artist.id}
@@ -143,12 +164,14 @@ const Index = () => {
             </motion.div>
 
             <DonationFeed donations={donations} />
+            <ActivityFeed />
           </div>
 
           {/* Sidebar */}
           <div className="space-y-8">
             <Leaderboard artists={artists} />
             {walletConnected && <UserStats userStakingPower={userStakingPower} />}
+            <DailyMissions />
           </div>
         </motion.div>
       </main>
