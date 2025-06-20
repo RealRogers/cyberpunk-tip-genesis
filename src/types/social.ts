@@ -72,3 +72,62 @@ export interface Season {
 }
 
 export type UserTier = 'CYBER_NOVICE' | 'DIGITAL_REBEL' | 'CYBER_PATRON' | 'NEURAL_LEGEND';
+
+export interface Badge {
+  id: string;
+  name: string;
+  description: string;
+  icon: string;
+  rarity: 'common' | 'rare' | 'epic' | 'legendary';
+  unlocked: boolean;
+  unlockDate?: string;
+  unlockCondition: string;
+  xpReward: number;
+}
+
+export interface Achievement extends Badge {
+  category: 'social' | 'tipping' | 'engagement' | 'milestone';
+  progress: number;
+  target: number;
+  rewardType: 'xp' | 'sp' | 'badge' | 'nft';
+}
+
+export interface Reputation {
+  level: number;
+  xp: number;
+  xpToNextLevel: number;
+  title: string;
+  badge: string;
+  benefits: string[];
+}
+
+export interface TemporaryEvent {
+  id: string;
+  name: string;
+  description: string;
+  startDate: string;
+  endDate: string;
+  isActive: boolean;
+  rewards: {
+    type: 'xp' | 'sp' | 'badge' | 'nft';
+    amount: number;
+    item?: any;
+  }[];
+  missions: {
+    id: string;
+    title: string;
+    description: string;
+    type: 'tip' | 'comment' | 'social' | 'custom';
+    target: number;
+    progress: number;
+    reward: number;
+    completed: boolean;
+  }[];
+  leaderboard?: {
+    userId: string;
+    username: string;
+    avatar?: string;
+    score: number;
+    position: number;
+  }[];
+}

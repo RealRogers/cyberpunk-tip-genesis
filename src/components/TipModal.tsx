@@ -10,7 +10,7 @@ interface TipModalProps {
   isOpen: boolean;
   onClose: () => void;
   artist: Artist | null;
-  onTip: (amount: number, message: string) => void;
+  onTip: (amount: number, message: string) => void | Promise<void>;
 }
 
 const TipModal: React.FC<TipModalProps> = ({ isOpen, onClose, artist, onTip }) => {

@@ -14,6 +14,7 @@ import BackgroundFX from '../components/BackgroundFX';
 import SeasonBanner from '../components/SeasonBanner';
 import ActivityFeed from '../components/ActivityFeed';
 import DailyMissions from '../components/DailyMissions';
+import CommentSection from '../components/CommentSection';
 
 const Index = () => {
   const [walletConnected, setWalletConnected] = useState(false);
@@ -165,6 +166,13 @@ const Index = () => {
 
             <DonationFeed donations={donations} />
             <ActivityFeed />
+            <div className="mt-12">
+              <CommentSection 
+                comments={[]}
+                onAddComment={(content) => console.log('New comment:', content)}
+                onReact={(commentId, reaction) => console.log('Reaction:', commentId, reaction)}
+              />
+            </div>
           </div>
 
           {/* Sidebar */}

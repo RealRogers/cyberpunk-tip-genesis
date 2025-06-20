@@ -1,53 +1,92 @@
-# Welcome to your Lovable project
+# 🚀 Cyberpunk Tip Genesis
 
-## Project info
+Una plataforma social para artistas digitales donde los fans pueden apoyar a sus creadores favoritos mediante propinas (tips) y participar en una comunidad gamificada.
 
-**URL**: https://lovable.dev/projects/612faadd-3b24-4fcf-95e9-41a6c6742a34
+## 🌟 Características Principales
 
-## How can I edit this code?
+- 💰 Sistema de propinas integrado
+- 🏆 Sistema de logros y recompensas
+- 🏅 Clasificaciones y eventos temporales
+- 💬 Sección de comentarios interactiva
+- 🎨 Interfaz con temática cyberpunk
+- 📱 Diseño responsive
 
-There are several ways of editing your application.
+## 🚀 Comenzando
 
-**Use Lovable**
+### Requisitos Previos
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/612faadd-3b24-4fcf-95e9-41a6c6742a34) and start prompting.
+- Node.js (v16 o superior)
+- npm (v8 o superior) o yarn
+- Git
 
-Changes made via Lovable will be committed automatically to this repo.
+### Instalación
 
-**Use your preferred IDE**
+1. Clona el repositorio:
+   ```bash
+   git clone https://github.com/tu-usuario/cyberpunk-tip-genesis.git
+   cd cyberpunk-tip-genesis
+   ```
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+2. Instala las dependencias:
+   ```bash
+   npm install
+   # o
+   yarn install
+   ```
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+3. Configura las variables de entorno:
+   Crea un archivo `.env` en la raíz del proyecto con las siguientes variables:
+   ```env
+   VITE_API_URL=tu_api_url
+   VITE_APP_NAME="Cyberpunk Tip Genesis"
+   ```
 
-Follow these steps:
+4. Inicia el servidor de desarrollo:
+   ```bash
+   npm run dev
+   # o
+   yarn dev
+   ```
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+5. Abre tu navegador en:
+   ```
+   http://localhost:5173
+   ```
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+## 🛠️ Estructura del Proyecto
 
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
+```
+src/
+├── components/       # Componentes reutilizables
+├── pages/            # Componentes de páginas
+├── types/            # Definiciones de tipos TypeScript
+├── hooks/            # Custom React Hooks
+├── lib/              # Utilidades y configuraciones
+├── data/             # Datos mock y fixtures
+└── styles/           # Estilos globales
 ```
 
-**Edit a file directly in GitHub**
+## 📚 Documentación Adicional
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+- [Guía de Componentes](./docs/COMPONENTS.md)
+- [API Documentation](./docs/API.md)
+- [Guía de Estilo](./docs/STYLE_GUIDE.md)
+- [Guía de Contribución](./docs/CONTRIBUTING.md)
+- [Código de Conducta](./docs/CODE_OF_CONDUCT.md)
 
-**Use GitHub Codespaces**
+## 🤝 Contribuir
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
+¡Las contribuciones son bienvenidas! Por favor, lee nuestra [guía de contribución](./docs/CONTRIBUTING.md) para más detalles.
+
+## 📄 Licencia
+
+Este proyecto está bajo la Licencia MIT. Ver el archivo [LICENSE](./LICENSE) para más detalles.
+
+## ✨ Agradecimientos
+
+- Equipo de desarrollo
+- Comunidad de código abierto
+- Todos los contribuyentes
 - Edit files directly within the Codespace and commit and push your changes once you're done.
 
 ## What technologies are used for this project?
