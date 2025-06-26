@@ -1,5 +1,6 @@
 generator client {
   provider = "prisma-client-js"
+  output = "../src/generated/client"
 }
 
 datasource db {
@@ -26,6 +27,7 @@ model User {
   comments            Comment[]
   donations           Donation[]
   activityFeedItems   ActivityFeedItem[]
+  wallet                    String?    @unique @map("Wallet")
 }
 
 model Artist {
