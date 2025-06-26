@@ -1,0 +1,210 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql" // or "mysql" / "sqlite"
+  url      = env("DATABASE_URL")
+    directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id                  String     @id
+  username            String
+  avatar              String?
+  stakingPower        Int
+  reputation          Int
+  tier                UserTier
+  following           Int[]
+  followers           String[]
+  totalTipsGiven      Int
+  totalCommentsPosted Int
+  nftRewards          NFTReward[]
+  dailyMissionsCompleted Int
+  streakDays          Int
+
+  comments            Comment[]
+  donations           Donation[]
+  activityFeedItems   ActivityFeedItem[]
+}
+
+model Artist {
+  id             Int        @id @default(autoincrement())
+  name           String
+  bio            String
+  image          String
+  stakingPower   Int
+  totalTips      Int
+  rank           Int
+  genre          String
+
+  comments       Comment[]
+  donations      Donation[]
+}
+
+model Donation {
+  id             Int      @id @default(autoincrement())
+  artist         Artist   @relation(fields: [artistId], references: [id])
+  artistId       Int
+  donor          User     @relation(fields: [donorId], references: [id])
+  donorId        String
+  amount         String
+  message        String
+  timestamp      String
+  stakingPower   Int
+}
+
+model Comment {
+  id         Int      @id @default(autoincrement())
+  artist     Artist   @relation(fields: [artistId], references: [id])
+  artistId   Int
+  user       User     @relation(fields: [userId], references: [id])
+  userId     String
+  username   String
+  message    String
+  timestamp  String
+  likes      Int
+  avatar     String?
+}
+
+model ActivityFeedItem {
+  id          Int       @id @default(autoincrement())
+  type        FeedType
+  user        User      @relation(fields: [userId], references: [id])
+  userId      String
+  artistId    Int?
+  artistName  String?
+  amount      String?
+  message     String?
+  timestamp   String
+  icon        String?
+}
+
+model DailyMission {
+  id          Int      @id @default(autoincrement())
+  title       String
+  description String
+  reward      Int
+  type        MissionType
+  target      Int
+  progress    Int
+  completed   Boolean
+  icon        String
+}
+
+model NFTReward {
+  id          Int      @id @default(autoincrement())
+  name        String
+  description String
+  rarity      Rarity
+  image       String
+  earnedAt    String
+  userId      String?
+  user        User?    @relation(fields: [userId], references: [id])
+  seasonId    Int?   
+  season      Season?  @relation(fields: [seasonId], references: [id]) 
+}
+
+model Season {
+  id            Int        @id @default(autoincrement())
+  name          String
+  description   String
+  startDate     String
+  endDate       String
+  tipMultiplier Float
+  isActive      Boolean
+  rewards       NFTReward[]
+}
+
+model Badge {
+  id              String   @id
+  name            String
+  description     String
+  icon            String
+  rarity          Rarity
+  unlocked        Boolean
+  unlockDate      String?
+  unlockCondition String
+  xpReward        Int
+}
+
+model Achievement {
+  id              String   @id
+  name            String
+  description     String
+  icon            String
+  rarity          Rarity
+  unlocked        Boolean
+  unlockDate      String?
+  unlockCondition String
+  xpReward        Int
+  category        AchievementCategory
+  progress        Int
+  target          Int
+  rewardType      RewardType
+}
+
+model TemporaryEvent {
+  id            String      @id
+  name          String
+  description   String
+  startDate     String
+  endDate       String
+  isActive      Boolean
+  rewards       Json
+  missions      Json
+  leaderboard   Json
+}
+
+model Reputation {
+  id             Int       @id @default(1)
+  level          Int
+  xp             Int
+  xpToNextLevel  Int
+  title          String
+  badge          String
+  benefits       String[]
+}
+
+enum UserTier {
+  CYBER_NOVICE
+  DIGITAL_REBEL
+  CYBER_PATRON
+  NEURAL_LEGEND
+}
+
+enum FeedType {
+  tip
+  comment
+  follow
+  achievement
+  mission
+}
+
+enum Rarity {
+  common
+  rare
+  epic
+  legendary
+}
+
+enum AchievementCategory {
+  social
+  tipping
+  engagement
+  milestone
+}
+
+enum RewardType {
+  xp
+  sp
+  badge
+  nft
+}
+
+enum MissionType {
+  tip
+  comment
+  follow
+  login
+}

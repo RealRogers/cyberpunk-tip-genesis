@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
+// import { useNavigate } from 'react-router-dom';
 import { Send, Zap, TrendingUp, Users, UserPlus, UserCheck } from 'lucide-react';
 import { Artist } from '../data/mockData';
 import { slideUpVariants } from '../types/animations';
@@ -14,7 +14,7 @@ interface ArtistCardProps {
 }
 
 const ArtistCard: React.FC<ArtistCardProps> = ({ artist, onTip, walletConnected, index }) => {
-  const navigate = useNavigate();
+  //const navigate = useNavigate();
   const [isFollowing, setIsFollowing] = useState(false);
   const [showComments, setShowComments] = useState(false);
 
@@ -36,7 +36,7 @@ const ArtistCard: React.FC<ArtistCardProps> = ({ artist, onTip, walletConnected,
   const handleCardClick = (e: React.MouseEvent) => {
     // Solo navegar si el clic no fue en un botón o enlace
     if (!(e.target instanceof HTMLButtonElement) && !(e.target instanceof HTMLAnchorElement)) {
-      navigate(`/artist/${artist.id}`);
+   //   navigate(`/artist/${artist.id}`);
     }
   };
 
