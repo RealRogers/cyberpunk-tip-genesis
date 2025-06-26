@@ -1,0 +1,306 @@
+"use client"
+import { useState, useEffect } from 'react';
+import { FaUser, FaImage, FaRobot, FaShieldAlt, FaEthereum, FaWallet } from 'react-icons/fa';
+import { SiWebauthn } from 'react-icons/si';
+
+// Mock wallet connection hook
+const useMockWallet = () => {
+  const [address, setAddress] = useState<string | null>(null);
+  const [isConnecting, setIsConnecting] = useState(false);
+
+  const connect = async () => {
+    setIsConnecting(true);
+    // Simulate wallet connection delay
+    await new Promise(resolve => setTimeout(resolve, 1500));
+    // Mock address - in a real app this would come from the wallet
+    setAddress('0x742d35Cc6634C0532925a3b844Bc454e4438f44e');
+    setIsConnecting(false);
+  };
+
+  const disconnect = () => {
+    setAddress(null);
+  };
+
+  return { address, isConnecting, connect, disconnect };
+};
+
+ const Web3RegistrationForm = () => {
+  const { address, isConnecting, connect, disconnect } = useMockWallet();
+  const [formData, setFormData] = useState({
+    username: '',
+    avatar: '',
+    tier: 'CYBER_NOVICE' as const,
+  });
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [showWalletModal, setShowWalletModal] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!address) {
+      setShowWalletModal(true);
+      return;
+    }
+
+    setIsLoading(true);
+    setError('');
+
+    try {
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      // In a real app, you would redirect to profile
+      console.log('Registration successful for:', {
+        id: address,
+        ...formData,
+        stakingPower: 100,
+        reputation: 0,
+      });
+      
+      alert('Registration complete! Redirecting to profile...');
+    } catch (err) {
+      setError('Registration failed. Please try again.');
+      console.error('Registration error:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
+
+  const shortenAddress = (addr: string) => {
+    return `${addr.substring(0, 6)}...${addr.substring(addr.length - 4)}`;
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center p-4">
+      {/* Wallet Connection Modal */}
+      {showWalletModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
+          <div className="bg-gray-800 rounded-xl p-6 max-w-md w-full border border-cyan-500/30">
+            <h3 className="text-xl font-bold text-cyan-400 mb-4 flex items-center gap-2">
+              <SiWebauthn className="text-2xl" />
+              Connect Your Wallet
+            </h3>
+            <p className="text-gray-300 mb-6">
+              To continue, please connect your crypto wallet to verify ownership.
+            </p>
+            
+            <button
+              onClick={() => {
+                connect();
+                setShowWalletModal(false);
+              }}
+              disabled={isConnecting}
+              className={`w-full flex items-center justify-center gap-3 py-3 px-4 rounded-lg font-medium mb-3 ${
+                isConnecting
+                  ? 'bg-gray-700 cursor-not-allowed'
+                  : 'bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600'
+              }`}
+            >
+              {isConnecting ? (
+                'Connecting...'
+              ) : (
+                <>
+                  <FaEthereum className="text-xl" />
+                  <span>Mock Wallet Connection</span>
+                </>
+              )}
+            </button>
+            
+            <button
+              onClick={() => setShowWalletModal(false)}
+              className="w-full py-2 text-gray-400 hover:text-white"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Registration Form */}
+      <div className="w-full max-w-md bg-gray-800 rounded-xl p-8 shadow-lg border border-gray-700">
+        <div className="text-center mb-8">
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent mb-2">
+            Complete Your Profile
+          </h1>
+          <p className="text-gray-400">
+            {address ? (
+              <div className="flex items-center justify-center gap-2">
+                <FaWallet className="text-cyan-400" />
+                <span className="text-cyan-300 font-mono">
+                  {shortenAddress(address)}
+                </span>
+                <button 
+                  onClick={disconnect}
+                  className="text-xs text-red-400 hover:text-red-300 ml-2"
+                >
+                  (disconnect)
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => setShowWalletModal(true)}
+                className="text-cyan-400 hover:text-cyan-300 flex items-center justify-center gap-2 mx-auto"
+              >
+                <FaEthereum />
+                <span>Connect Wallet</span>
+              </button>
+            )}
+          </p>
+        </div>
+
+        {error && (
+          <div className="mb-6 p-4 bg-red-900/50 border border-red-700 rounded-lg text-red-200">
+            {error}
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Username Field */}
+          <div>
+            <label htmlFor="username" className="block text-sm font-medium text-gray-300 mb-1">
+              Choose Your Handle
+            </label>
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <FaUser className="text-gray-500" />
+              </div>
+              <input
+                type="text"
+                id="username"
+                name="username"
+                value={formData.username}
+                onChange={handleChange}
+                required
+                disabled={!address}
+                minLength={3}
+                maxLength={20}
+                className="bg-gray-700 border border-gray-600 text-white rounded-lg block w-full pl-10 p-2.5 focus:ring-2 focus:ring-cyan-500 focus:border-transparent disabled:opacity-50"
+                placeholder="cyberpunk_2077"
+              />
+            </div>
+            <p className="mt-1 text-xs text-gray-500">
+              This will be your public identity in the community
+            </p>
+          </div>
+
+          {/* Avatar URL Field */}
+          <div>
+            <label htmlFor="avatar" className="block text-sm font-medium text-gray-300 mb-1">
+              Avatar URL (optional)
+            </label>
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <FaImage className="text-gray-500" />
+              </div>
+              <input
+                type="url"
+                id="avatar"
+                name="avatar"
+                value={formData.avatar}
+                onChange={handleChange}
+                disabled={!address}
+                className="bg-gray-700 border border-gray-600 text-white rounded-lg block w-full pl-10 p-2.5 focus:ring-2 focus:ring-cyan-500 focus:border-transparent disabled:opacity-50"
+                placeholder="https://example.com/avatar.jpg"
+              />
+            </div>
+            <p className="mt-1 text-xs text-gray-500">
+              We recommend using a decentralized storage like IPFS
+            </p>
+          </div>
+
+          {/* Tier Selection */}
+          <div>
+            <label htmlFor="tier" className="block text-sm font-medium text-gray-300 mb-1">
+              Membership Tier
+            </label>
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <FaShieldAlt className="text-gray-500" />
+              </div>
+              <select
+                id="tier"
+                name="tier"
+                value={formData.tier}
+                onChange={handleChange}
+                disabled={!address}
+                className="bg-gray-700 border border-gray-600 text-white rounded-lg block w-full pl-10 p-2.5 focus:ring-2 focus:ring-cyan-500 focus:border-transparent appearance-none disabled:opacity-50"
+              >
+                <option value="CYBER_NOVICE">Cyber Novice</option>
+                <option value="DIGITAL_REBEL">Digital Rebel</option>
+                <option value="CYBER_PATRON">Cyber Patron</option>
+                <option value="NEURAL_LEGEND">Neural Legend</option>
+              </select>
+            </div>
+            <div className="mt-2 text-xs text-gray-400">
+              <div className="flex items-center space-x-1">
+                <FaRobot className="text-cyan-400" />
+                <span>Tier benefits are automatically calculated</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Stats Preview */}
+          {address && (
+            <div className="border border-gray-700 rounded-lg p-4 animate-fade-in">
+              <h3 className="text-sm font-medium text-gray-300 mb-2">Your Starting Stats</h3>
+              <div className="grid grid-cols-2 gap-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-gray-400">Staking Power</span>
+                  <span className="font-mono">100 SP</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-400">Reputation</span>
+                  <span className="font-mono">0 XP</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-400">Tier</span>
+                  <span className="text-cyan-400">{formData.tier.split('_').join(' ')}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-400">Daily Missions</span>
+                  <span className="font-mono">0/3</span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Submit Button */}
+          <button
+            type="submit"
+            disabled={isLoading || !address}
+            className={`w-full flex items-center justify-center space-x-2 py-3 px-4 rounded-lg font-medium transition-all mt-4 ${
+              isLoading
+                ? 'bg-gray-600 cursor-not-allowed'
+                : !address
+                ? 'bg-gray-700 cursor-not-allowed text-gray-400'
+                : 'bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600'
+            }`}
+          >
+            {isLoading ? (
+              'Initializing Cyber Profile...'
+            ) : !address ? (
+              'Connect Wallet to Continue'
+            ) : (
+              <>
+                <FaShieldAlt className="text-white" />
+                <span>Complete Registration</span>
+              </>
+            )}
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+};
+
+
+export default Web3RegistrationForm;
