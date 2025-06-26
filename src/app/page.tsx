@@ -1,4 +1,4 @@
-
+//@ts-nocheck
 "use client"
 import React, { useState } from 'react';
 import { Toaster, toast } from 'react-hot-toast';

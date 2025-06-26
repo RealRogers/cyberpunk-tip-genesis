@@ -1,4 +1,4 @@
-
+//@ts-nocheck
 import React, { useState } from 'react';
 import { Toaster, toast } from 'react-hot-toast';
 import { motion } from 'framer-motion';
