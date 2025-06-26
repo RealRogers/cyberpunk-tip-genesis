@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { FaUser, FaImage, FaRobot, FaShieldAlt, FaEthereum, FaWallet } from 'react-icons/fa';
 import { SiWebauthn } from 'react-icons/si';
+import { useRouter } from 'next/navigation';
 
 // Mock wallet connection hook
 const useMockWallet = () => {
@@ -24,7 +25,8 @@ const useMockWallet = () => {
   return { address, isConnecting, connect, disconnect };
 };
 
- const Web3RegistrationForm = () => {
+const Web3RegistrationForm = () => {
+  const router = useRouter();
   const { address, isConnecting, connect, disconnect } = useMockWallet();
   const [formData, setFormData] = useState({
     username: '',
@@ -34,6 +36,37 @@ const useMockWallet = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [showWalletModal, setShowWalletModal] = useState(false);
+  const [existingUser, setExistingUser] = useState<any>(null);
+
+  // Check if user exists when wallet connects
+  useEffect(() => {
+    const checkUserExists = async () => {
+      if (!address) return;
+      
+      try {
+        setIsLoading(true);
+        const response = await fetch(`/api/users?wallet=${address}`);
+        if (response.ok) {
+          const user = await response.json();
+          if (user) {
+            setExistingUser(user);
+            // Pre-fill form with existing user data
+            setFormData({
+              username: user.username,
+              avatar: user.avatar || '',
+              tier: user.tier || 'CYBER_NOVICE',
+            });
+          }
+        }
+      } catch (err) {
+        console.error('Error checking user:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    checkUserExists();
+  }, [address]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -47,20 +80,35 @@ const useMockWallet = () => {
     setError('');
 
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // In a real app, you would redirect to profile
-      console.log('Registration successful for:', {
-        id: address,
-        ...formData,
-        stakingPower: 100,
-        reputation: 0,
+      const userData = {
+        wallet: address,
+        username: formData.username,
+        avatar: formData.avatar,
+        tier: formData.tier,
+        stakingPower: existingUser?.stakingPower || 100,
+        reputation: existingUser?.reputation || 0,
+      };
+
+      const response = await fetch('/api/users', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(userData),
       });
+
+      if (!response.ok) {
+        throw new Error('Failed to save user data');
+      }
+
+      const user = await response.json();
+      console.log('User upserted:', user);
       
-      alert('Registration complete! Redirecting to profile...');
+      // Redirect to profile or dashboard
+    //router.push(`/profile/${address}`);
+      
     } catch (err) {
-      setError('Registration failed. Please try again.');
+      setError(err instanceof Error ? err.message : 'Registration failed. Please try again.');
       console.error('Registration error:', err);
     } finally {
       setIsLoading(false);
@@ -129,7 +177,7 @@ const useMockWallet = () => {
       <div className="w-full max-w-md bg-gray-800 rounded-xl p-8 shadow-lg border border-gray-700">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent mb-2">
-            Complete Your Profile
+            {existingUser ? 'Update Your Profile' : 'Complete Your Profile'}
           </h1>
           <p className="text-gray-400">
             {address ? (
@@ -251,23 +299,25 @@ const useMockWallet = () => {
           {/* Stats Preview */}
           {address && (
             <div className="border border-gray-700 rounded-lg p-4 animate-fade-in">
-              <h3 className="text-sm font-medium text-gray-300 mb-2">Your Starting Stats</h3>
+              <h3 className="text-sm font-medium text-gray-300 mb-2">Your Stats</h3>
               <div className="grid grid-cols-2 gap-2 text-sm">
                 <div className="flex justify-between">
                   <span className="text-gray-400">Staking Power</span>
-                  <span className="font-mono">100 SP</span>
+                  <span className="font-mono">{existingUser?.stakingPower || 100} SP</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-400">Reputation</span>
-                  <span className="font-mono">0 XP</span>
+                  <span className="font-mono">{existingUser?.reputation || 0} XP</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-400">Tier</span>
                   <span className="text-cyan-400">{formData.tier.split('_').join(' ')}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-400">Daily Missions</span>
-                  <span className="font-mono">0/3</span>
+                  <span className="text-gray-400">Status</span>
+                  <span className={existingUser ? 'text-green-400' : 'text-yellow-400'}>
+                    {existingUser ? 'Existing User' : 'New User'}
+                  </span>
                 </div>
               </div>
             </div>
@@ -286,13 +336,13 @@ const useMockWallet = () => {
             }`}
           >
             {isLoading ? (
-              'Initializing Cyber Profile...'
+              'Processing...'
             ) : !address ? (
               'Connect Wallet to Continue'
             ) : (
               <>
                 <FaShieldAlt className="text-white" />
-                <span>Complete Registration</span>
+                <span>{existingUser ? 'Update Profile' : 'Complete Registration'}</span>
               </>
             )}
           </button>
@@ -301,6 +351,5 @@ const useMockWallet = () => {
     </div>
   );
 };
-
 
 export default Web3RegistrationForm;

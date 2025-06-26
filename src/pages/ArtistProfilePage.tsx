@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useRouter } from 'next/router';
 import { FaTwitter, FaInstagram, FaGlobe, FaHeart, FaRegHeart } from 'react-icons/fa';
 import { CommentSection } from '../components/CommentSection';
 import { Artist, Comment } from '../types/artist';
@@ -47,9 +47,9 @@ const mockComments: Comment[] = [
 ];
 
 export const ArtistProfilePage = () => {
-  const { artistId } = useParams<{ artistId: string }>();
+  const router = useRouter();
+  const { artistId } = router.query;
   console.log('ArtistProfilePage - artistId:', artistId);
-  const navigate = useNavigate();
   const [artist, setArtist] = useState<Artist | null>(null);
   const [isFollowing, setIsFollowing] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -72,7 +72,7 @@ export const ArtistProfilePage = () => {
       // Usar datos de ejemplo por ahora
       const foundArtist = mockArtist.id === id ? mockArtist : null;
       if (!foundArtist) {
-        navigate('/not-found');
+        router.push('/not-found');
         return;
       }
       
@@ -80,20 +80,23 @@ export const ArtistProfilePage = () => {
       setComments(mockComments.filter(comment => comment.artistId === id));
     } catch (error) {
       console.error('Error loading artist data:', error);
-      navigate('/error', { state: { error: 'Failed to load artist data' } });
+      router.push({
+        pathname: '/error',
+        query: { error: 'Failed to load artist data' },
+      });
     } finally {
       setIsLoading(false);
     }
-  }, [navigate]);
+  }, [router]);
 
   // Cargar datos cuando cambia el ID del artista
   useEffect(() => {
     if (artistId) {
-      loadArtistData(artistId);
+      loadArtistData(artistId as string);
     } else {
-      navigate('/');
+      router.push('/');
     }
-  }, [artistId, loadArtistData, navigate]);
+  }, [artistId, loadArtistData, router]);
 
   const handleFollow = async () => {
     try {
