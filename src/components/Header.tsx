@@ -1,16 +1,36 @@
-
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Wallet, Zap, Shield } from 'lucide-react';
+import { Wallet, Zap, Shield, LogOut } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 
 interface HeaderProps {
   walletConnected: boolean;
   glitchEffect: boolean;
   connectWallet: () => void;
+  disconnectWallet: () => void;
   userStakingPower: number;
+  walletAddress?: string | null;
 }
 
-const Header: React.FC<HeaderProps> = ({ walletConnected, glitchEffect, connectWallet, userStakingPower }) => {
+const Header: React.FC<HeaderProps> = ({ 
+  walletConnected, 
+  glitchEffect, 
+  connectWallet, 
+  disconnectWallet,
+  userStakingPower,
+  walletAddress 
+}) => {
+  const router = useRouter();
+  const truncatedAddress = walletAddress 
+    ? `${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}`
+    : '';
+
+  const handleWalletClick = () => {
+    if (walletConnected) {
+      router.push('/profile');
+    }
+  };
+
   return (
     <motion.header 
       className="border-b border-cyan-400/30 bg-black/50 backdrop-blur-md sticky top-0 z-40"
@@ -36,31 +56,58 @@ const Header: React.FC<HeaderProps> = ({ walletConnected, glitchEffect, connectW
 
         <div className="w-full sm:w-auto flex items-center justify-end space-x-2 sm:space-x-4">
           {walletConnected && (
-            <motion.div 
-              className="flex items-center space-x-2 bg-gray-900/50 px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg border border-cyan-400/30 flex-shrink-0"
-              initial={{ scale: 0, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ delay: 0.5, type: "spring" }}
-            >
-              <Shield className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-green-400" />
-              <span className="text-xs sm:text-sm font-mono text-green-400">{userStakingPower} SP</span>
-            </motion.div>
+            <>
+              <motion.div 
+                className="flex items-center space-x-2 bg-gray-900/50 px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg border border-cyan-400/30 flex-shrink-0"
+                initial={{ scale: 0, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ delay: 0.5, type: "spring" }}
+              >
+                <Shield className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-green-400" />
+                <span className="text-xs sm:text-sm font-mono text-green-400">{userStakingPower} SP</span>
+              </motion.div>
+
+              <motion.button
+                onClick={handleWalletClick}
+                className="flex items-center space-x-2 bg-gray-900/50 px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg border border-cyan-400/30 hover:bg-gray-800/50 transition-colors"
+                initial={{ scale: 0, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ delay: 0.6, type: "spring" }}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+              >
+                <Wallet className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-cyan-400" />
+                <span className="text-xs sm:text-sm font-mono text-cyan-400">{truncatedAddress}</span>
+              </motion.button>
+            </>
           )}
 
-          <motion.button
-            onClick={connectWallet}
-            disabled={walletConnected}
-            className={`flex-shrink-0 flex items-center justify-center space-x-1.5 sm:space-x-2 px-3 sm:px-6 py-2 sm:py-3 rounded-lg font-mono font-bold transition-all duration-300 text-sm sm:text-base ${
-              walletConnected
-                ? 'bg-green-600/20 text-green-400 border border-green-400/50'
-                : 'bg-gradient-to-r from-cyan-600 to-pink-600 hover:from-cyan-700 hover:to-pink-700 text-white border border-cyan-400/50 hover:shadow-lg hover:shadow-cyan-500/25'
-            } ${glitchEffect ? 'animate-pulse' : ''}`}
-            whileHover={!walletConnected ? { scale: 1.02 } : {}}
-            whileTap={!walletConnected ? { scale: 0.98 } : {}}
-          >
-            <Wallet size={16} />
-            <span>{walletConnected ? 'NEURAL_LINK_ACTIVE' : 'CONNECT_WALLET'}</span>
-          </motion.button>
+          {walletConnected ? (
+            <motion.button
+              onClick={disconnectWallet}
+              className="flex-shrink-0 flex items-center justify-center space-x-1.5 sm:space-x-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg font-mono font-bold transition-all duration-300 text-sm sm:text-base bg-red-600/20 text-red-400 border border-red-400/50 hover:bg-red-600/30 hover:shadow-lg hover:shadow-red-500/10"
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+            >
+              <LogOut size={16} />
+              <span className="hidden sm:inline">DISCONNECT</span>
+            </motion.button>
+          ) : (
+            <motion.button
+              onClick={connectWallet}
+              disabled={walletConnected}
+              className={`flex-shrink-0 flex items-center justify-center space-x-1.5 sm:space-x-2 px-3 sm:px-6 py-2 sm:py-3 rounded-lg font-mono font-bold transition-all duration-300 text-sm sm:text-base ${
+                walletConnected
+                  ? 'bg-green-600/20 text-green-400 border border-green-400/50'
+                  : 'bg-gradient-to-r from-cyan-600 to-pink-600 hover:from-cyan-700 hover:to-pink-700 text-white border border-cyan-400/50 hover:shadow-lg hover:shadow-cyan-500/25'
+              } ${glitchEffect ? 'animate-pulse' : ''}`}
+              whileHover={!walletConnected ? { scale: 1.02 } : {}}
+              whileTap={!walletConnected ? { scale: 0.98 } : {}}
+            >
+              <Wallet size={16} />
+              <span>{walletConnected ? 'NEURAL_LINK_ACTIVE' : 'CONNECT_WALLET'}</span>
+            </motion.button>
+          )}
         </div>
       </div>
     </motion.header>
