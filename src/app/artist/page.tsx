@@ -5,7 +5,7 @@ import { FaTwitter, FaInstagram, FaGlobe, FaHeart, FaRegHeart } from 'react-icon
 import { CommentSection } from '../../components/CommentSection';
 import { Artist, Comment } from '../../types/artist';
 
-export const ArtistProfilePage = ({ params }: { params: { wallet: string } }) => {
+const ArtistProfilePage = ({ params }: { params: { wallet: string } }) => {
   const walletAddress = "0x742d35Cc6634C0532925a3b844Bc454e4438f44e";
   const [artist, setArtist] = useState<Artist | null>(null);
   const [isFollowing, setIsFollowing] = useState(false);
