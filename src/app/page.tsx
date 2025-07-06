@@ -1,8 +1,10 @@
 //@ts-nocheck
 "use client"
-import React, { useState } from 'react';
+import React, { useState,useEffect } from 'react';
 import { Toaster, toast } from 'react-hot-toast';
 import { motion } from 'framer-motion';
+import { useRouter } from 'next/navigation';
+import { Plus } from 'lucide-react';
 
 import { artistsData, donationsData, Artist, Donation } from '../data/mockData';
 import Header from '../components/Header';
@@ -16,35 +18,51 @@ import SeasonBanner from '../components/SeasonBanner';
 import ActivityFeed from '../components/ActivityFeed';
 import DailyMissions from '../components/DailyMissions';
 import CommentSection from '../components/CommentSection';
+import ContentModal from '../components/ContentModal';
+import Feed from "../components/Feed";
+import { useUser } from '../app/providers/UserProvider';
 
 const Index = () => {
-  const [walletConnected, setWalletConnected] = useState(false);
-  const [glitchEffect, setGlitchEffect] = useState(false);
-  const [userStakingPower, setUserStakingPower] = useState(275);
-  
+  const [isContentModalOpen, setIsContentModalOpen] = useState(false);
+  const {
+    user,
+    loading,
+    isAuthenticated,
+    isRegistered,
+    connectWallet,
+    disconnectWallet,
+    refreshUser,
+    redirectToRegistration,
+    walletAddress
+  } = useUser();
+
   const [artists, setArtists] = useState<Artist[]>(artistsData);
   const [donations, setDonations] = useState<Donation[]>(donationsData);
-  
   const [selectedArtist, setSelectedArtist] = useState<Artist | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [glitchEffect, setGlitchEffect] = useState(false);
+  const [userStakingPower, setUserStakingPower] = useState(275);
 
-  const connectWallet = () => {
-    setGlitchEffect(true);
-    toast.loading('Engaging Neural Link...', {
-      style: { background: '#111', color: '#0ff' },
-    });
-    setTimeout(() => {
-      setWalletConnected(true);
-      setGlitchEffect(false);
-      toast.dismiss();
-      toast.success('CONNECTION_ESTABLISHED', {
-        icon: '✅',
-        style: { background: '#111', color: '#0f0' },
-      });
-    }, 1500);
-  };
+
+
+
 
   const handleOpenModal = (artist: Artist) => {
+    if (!isAuthenticated) {
+      toast.error('Please connect your wallet first', {
+        style: { background: '#111', color: '#f00' },
+      });
+      return;
+    }
+    
+    if (!isRegistered) {
+      toast.error('Please complete registration first', {
+        style: { background: '#111', color: '#f00' },
+      });
+      router.push('/users/registration');
+      return;
+    }
+    
     setSelectedArtist(artist);
     setIsModalOpen(true);
   };
@@ -54,46 +72,53 @@ const Index = () => {
     setSelectedArtist(null);
   };
 
-  const handleTip = (amount: number, message: string) => {
-    if (!selectedArtist) return;
+  const handleTip = async (amount: number, message: string) => {
+    if (!selectedArtist || !user?.wallet) return;
 
-    // Apply season multiplier
-    const seasonMultiplier = 1.5;
-    const bonusStakingPower = Math.floor(amount * (seasonMultiplier - 1));
+    try {
+      // Apply season multiplier
+      const seasonMultiplier = 1.5;
+      const bonusStakingPower = Math.floor(amount * (seasonMultiplier - 1));
 
-    const newDonation: Donation = {
-      id: donations.length + 1,
-      artist: selectedArtist.name,
-      donor: '0x5555...aaaa',
-      amount: amount.toString(),
-      message: message || 'RESPECT THE CODE! Keep the rebellion alive! ⚡🔥',
-      timestamp: 'JUST NOW',
-      stakingPower: amount + bonusStakingPower
-    };
-    
-    // Update donations feed
-    setDonations(prev => [newDonation, ...prev]);
-    
-    // Update user staking power with season bonus
-    setUserStakingPower(prev => prev + amount + bonusStakingPower);
-    
-    // Update artist stats
-    setArtists(prev => prev.map(artist => 
-      artist.id === selectedArtist.id 
-        ? { ...artist, totalTips: artist.totalTips + 1, stakingPower: artist.stakingPower + amount + bonusStakingPower }
-        : artist
-    ));
+      const newDonation: Donation = {
+        id: donations.length + 1,
+        artist: selectedArtist.name,
+        donor: `${user.wallet.slice(0, 6)}...${user.wallet.slice(-4)}`,
+        amount: amount.toString(),
+        message: message || 'RESPECT THE CODE! Keep the rebellion alive! ⚡🔥',
+        timestamp: 'JUST NOW',
+        stakingPower: amount + bonusStakingPower
+      };
+      
+      // Update donations feed
+      setDonations(prev => [newDonation, ...prev]);
+      
+      // Update user staking power with season bonus
+      setUserStakingPower(prev => prev + amount + bonusStakingPower);
+      
+      // Update artist stats
+      setArtists(prev => prev.map(artist => 
+        artist.id === selectedArtist.id 
+          ? { ...artist, totalTips: artist.totalTips + 1, stakingPower: artist.stakingPower + amount + bonusStakingPower }
+          : artist
+      ));
 
-    // Show season bonus notification
-    if (bonusStakingPower > 0) {
-      toast.success(`¡BONUS TEMPORAL! +${bonusStakingPower} SP extra por el evento`, {
-        icon: '🎉',
-        style: { background: '#111', color: '#f59e0b' },
-        duration: 4000
+      // Show season bonus notification
+      if (bonusStakingPower > 0) {
+        toast.success(`¡BONUS TEMPORAL! +${bonusStakingPower} SP extra por el evento`, {
+          icon: '🎉',
+          style: { background: '#111', color: '#f59e0b' },
+          duration: 4000
+        });
+      }
+      
+      handleCloseModal();
+    } catch (error) {
+      console.error('Tip error:', error);
+      toast.error('Transaction failed. Please try again.', {
+        style: { background: '#111', color: '#f00' },
       });
     }
-    
-    handleCloseModal();
   };
 
   const containerVariants = {
@@ -104,16 +129,28 @@ const Index = () => {
     },
   };
 
+  if (loading ) {
+    return (
+      <div className="min-h-screen bg-black text-white font-mono flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-pulse text-cyan-400 text-xl">loading metaverse..</div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-black text-white font-mono overflow-hidden relative">
       <Toaster position="top-center" toastOptions={{ duration: 3000 }} />
       <BackgroundFX />
       
       <Header 
-        walletConnected={walletConnected} 
+        walletConnected={isAuthenticated} 
         glitchEffect={glitchEffect}
         connectWallet={connectWallet}
+        disconnectWallet={disconnectWallet}
         userStakingPower={userStakingPower}
+        walletAddress={walletAddress}
       />
       
       <main className="max-w-7xl mx-auto px-4 py-8 relative z-10">
@@ -152,17 +189,7 @@ const Index = () => {
                 </p>
               </div>
 
-              <div className="grid grid-cols-1 xl:grid-cols-1 gap-6">
-                {artists.map((artist, index) => (
-                  <ArtistCard
-                    key={artist.id}
-                    artist={artist}
-                    onTip={handleOpenModal}
-                    walletConnected={walletConnected}
-                    index={index}
-                  />
-                ))}
-              </div>
+              <Feed/>
             </motion.div>
 
             <DonationFeed donations={donations} />
@@ -172,6 +199,7 @@ const Index = () => {
                 comments={[]}
                 onAddComment={(content) => console.log('New comment:', content)}
                 onReact={(commentId, reaction) => console.log('Reaction:', commentId, reaction)}
+                walletConnected={isAuthenticated && isRegistered}
               />
             </div>
           </div>
@@ -179,8 +207,8 @@ const Index = () => {
           {/* Sidebar */}
           <div className="space-y-8">
             <Leaderboard artists={artists} />
-            {walletConnected && <UserStats userStakingPower={userStakingPower} />}
-            <DailyMissions />
+            {isAuthenticated && isRegistered && <UserStats userStakingPower={userStakingPower} />}
+            {isAuthenticated && isRegistered && <DailyMissions />}
           </div>
         </motion.div>
       </main>
@@ -190,6 +218,23 @@ const Index = () => {
         onClose={handleCloseModal}
         artist={selectedArtist}
         onTip={handleTip}
+        walletConnected={isAuthenticated && isRegistered}
+      />
+      
+      {isAuthenticated && isRegistered && (
+        <motion.button
+          onClick={() => setIsContentModalOpen(true)}
+          className="fixed bottom-6 right-6 z-40 p-4 rounded-full bg-gradient-to-br from-cyan-400/80 to-pink-400/80 shadow-lg hover:shadow-cyan-400/30 transition-all"
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+        >
+          <Plus className="h-6 w-6 text-white" />
+        </motion.button>
+      )}
+
+      <ContentModal 
+        isOpen={isContentModalOpen} 
+        onClose={() => setIsContentModalOpen(false)} 
       />
     </div>
   );

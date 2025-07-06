@@ -3,31 +3,13 @@ import { useState, useEffect } from 'react';
 import { FaUser, FaImage, FaRobot, FaShieldAlt, FaEthereum, FaWallet } from 'react-icons/fa';
 import { SiWebauthn } from 'react-icons/si';
 import { useRouter } from 'next/navigation';
-
-// Mock wallet connection hook
-const useMockWallet = () => {
-  const [address, setAddress] = useState<string | null>(null);
-  const [isConnecting, setIsConnecting] = useState(false);
-
-  const connect = async () => {
-    setIsConnecting(true);
-    // Simulate wallet connection delay
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    // Mock address - in a real app this would come from the wallet
-    setAddress('0x742d35Cc6634C0532925a3b844Bc454e4438f44e');
-    setIsConnecting(false);
-  };
-
-  const disconnect = () => {
-    setAddress(null);
-  };
-
-  return { address, isConnecting, connect, disconnect };
-};
+import { usePrivy, useWallets } from '@privy-io/react-auth';
 
 const Web3RegistrationForm = () => {
   const router = useRouter();
-  const { address, isConnecting, connect, disconnect } = useMockWallet();
+  const { ready, authenticated, user, login, logout } = usePrivy();
+  const { wallets } = useWallets();
+  
   const [formData, setFormData] = useState({
     username: '',
     avatar: '',
@@ -37,6 +19,9 @@ const Web3RegistrationForm = () => {
   const [error, setError] = useState('');
   const [showWalletModal, setShowWalletModal] = useState(false);
   const [existingUser, setExistingUser] = useState<any>(null);
+
+  // Get the first wallet address if connected
+  const address = wallets[0]?.address;
 
   // Check if user exists when wallet connects
   useEffect(() => {
@@ -105,7 +90,7 @@ const Web3RegistrationForm = () => {
       console.log('User upserted:', user);
       
       // Redirect to profile or dashboard
-    //router.push(`/profile/${address}`);
+      window.location ="/profile";
       
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Registration failed. Please try again.');
@@ -127,6 +112,29 @@ const Web3RegistrationForm = () => {
     return `${addr.substring(0, 6)}...${addr.substring(addr.length - 4)}`;
   };
 
+  const handleConnect = async () => {
+    try {
+      if (!authenticated) {
+        await login();
+      }
+      setShowWalletModal(false);
+    } catch (err) {
+      console.error('Login error:', err);
+      setError('Failed to connect wallet');
+    }
+  };
+
+  const handleDisconnect = async () => {
+    try {
+      await logout();
+      // Redirect to home page after successful logout
+      router.push('/');
+    } catch (err) {
+      console.error('Logout error:', err);
+      setError('Failed to disconnect wallet');
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center p-4">
       {/* Wallet Connection Modal */}
@@ -142,23 +150,20 @@ const Web3RegistrationForm = () => {
             </p>
             
             <button
-              onClick={() => {
-                connect();
-                setShowWalletModal(false);
-              }}
-              disabled={isConnecting}
+              onClick={handleConnect}
+              disabled={!ready || isLoading}
               className={`w-full flex items-center justify-center gap-3 py-3 px-4 rounded-lg font-medium mb-3 ${
-                isConnecting
+                !ready || isLoading
                   ? 'bg-gray-700 cursor-not-allowed'
                   : 'bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600'
               }`}
             >
-              {isConnecting ? (
+              {isLoading ? (
                 'Connecting...'
               ) : (
                 <>
                   <FaEthereum className="text-xl" />
-                  <span>Mock Wallet Connection</span>
+                  <span>Connect with Privy</span>
                 </>
               )}
             </button>
@@ -187,7 +192,7 @@ const Web3RegistrationForm = () => {
                   {shortenAddress(address)}
                 </span>
                 <button 
-                  onClick={disconnect}
+                  onClick={handleDisconnect}
                   className="text-xs text-red-400 hover:text-red-300 ml-2"
                 >
                   (disconnect)
