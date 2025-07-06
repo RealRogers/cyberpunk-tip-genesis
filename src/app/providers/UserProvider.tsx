@@ -94,6 +94,7 @@ interface UserContextType {
   activityLoading: boolean;
   fetchUserActivity: () => Promise<void>;
   refreshActivity: () => Promise<void>;
+  fetchUserActivitybyId:(userId: string) => Promise<UserActivity | null>;
 }
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
@@ -586,6 +587,26 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     []
   );
 
+   const fetchUserActivitybyId = useCallback(async (userId:string) => {
+    try {
+      setActivityLoading(true);
+      const response = await fetch(
+        `/api/users/activity?wallet=${userId}`
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch activity data");
+      }
+      const data = await response.json();
+     return data.activity
+    } catch (error) {
+      console.error("Error fetching user activity:", error);
+      toast.error("Failed to load activity data");
+    } finally {
+    }
+  }, []);
+
+
   return (
     <UserContext.Provider
       value={{
@@ -610,6 +631,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         activityLoading,
         fetchUserActivity,
         refreshActivity,
+        fetchUserActivitybyId
       }}
     >
       {children}

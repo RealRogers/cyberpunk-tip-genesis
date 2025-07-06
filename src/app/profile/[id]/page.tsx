@@ -29,14 +29,15 @@ export default function ProfileView() {
     user: currentUser,
     getUserProfile,
     fetchUserActivity,
-    activity,
-    activityLoading
+    fetchUserActivitybyId,
   } = useUser();
 
   const [profileUser, setProfileUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<ProfileTab>('about');
   const [activeActivityTab, setActiveActivityTab] = useState<ActivityTab>('all');
+  const [activity, setActivity] = useState(null);
+
 
 
   // Load profile data
@@ -45,7 +46,11 @@ export default function ProfileView() {
       try {
         setLoading(true);
         const userData = await getUserProfile(userId);
+        const activity = await fetchUserActivitybyId(userId)
+        console.log("activity",activity)
         setProfileUser(userData);
+        //@ts-ignore
+        setActivity(activity)
       } catch (error) {
         console.error('Error loading profile:', error);
         toast.error('Failed to load profile');
@@ -205,15 +210,6 @@ export default function ProfileView() {
   };
 
   const renderActivityTab = () => {
-    console.log("activity",activity)
-    if (activityLoading) {
-      return (
-        <div className="flex justify-center items-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-cyan-400"></div>
-        </div>
-      );
-    }
-
     if (!activity) {
       return (
         <div className="text-center py-12 text-gray-400">
