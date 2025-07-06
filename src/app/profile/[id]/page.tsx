@@ -64,7 +64,7 @@ export default function ProfileView() {
       console.log('data',data)
       setIsFollowing(data.isFollowing);
       setFollowers(data.followerCount)
-      setFollowing(data.folloeingCount)
+      setFollowing(data.followingCount)
     } catch (error) {
       console.error("Failed to check follow status:", error);
     }
