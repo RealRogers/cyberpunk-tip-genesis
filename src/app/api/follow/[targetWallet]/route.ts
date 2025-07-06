@@ -74,6 +74,7 @@ export async function GET(
   }
 
   try {
+    // Get follow status between current user and target user
     const followStatus = await prisma.follow.findUnique({
       where: {
         followerId_followingId: {
@@ -83,8 +84,20 @@ export async function GET(
       }
     })
 
+    // Get follower count (how many people follow the target user)
+    const followerCount = await prisma.follow.count({
+      where: { followingId: params.targetWallet }
+    })
+
+    // Get following count (how many people the target user follows)
+    const followingCount = await prisma.follow.count({
+      where: { followerId: params.targetWallet }
+    })
+
     return NextResponse.json({ 
-      isFollowing: Boolean(followStatus) 
+      isFollowing: Boolean(followStatus),
+      followerCount,
+      followingCount
     })
   } catch (error) {
     console.error('Follow check error:', error)
