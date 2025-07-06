@@ -1,182 +1,283 @@
 //@ts-nocheck
 // components/Feed.tsx
 "use client"
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { motion } from "framer-motion";
 import { Heart, MessageSquare, Zap, Activity, Gift } from "lucide-react";
-import { Toaster } from 'react-hot-toast';
+import { Toaster, toast } from 'react-hot-toast';
 import { useFeeds } from "../app/providers/FeedProvider";
 import { usePrivy, useWallets } from '@privy-io/react-auth';
 import { useRouter } from 'next/navigation';
+import CommentsSection from './CommentSection'
 
 
 type FeedType = 'all' | 'content' | 'activity' | 'donations';
+
+interface FeedItem {
+  id: string;
+  type: string;
+  createdAt: string;
+  data: {
+    user?: {
+      id: string;
+      username: string;
+      avatar: string | null;
+    };
+    donor?: {
+      id: string;
+      username: string;
+      avatar: string | null;
+    };
+    author?: {
+      id: string;
+      username: string;
+      avatar: string | null;
+    };
+    likes?: Array<{ userId: string }>;
+    comments?: Array<any>;
+    title?: string;
+    content?: string;
+    message?: string;
+  };
+}
 
 export default function Feed() {
   const { ready, authenticated } = usePrivy();
   const { wallets } = useWallets();
   const { feeds, loading, hasMore, fetchMore, handleLike, isProcessingLike } = useFeeds();
-   const router = useRouter();
+  const [expandedPost, setExpandedPost] = useState<string | null>(null)
+  const router = useRouter()
 
+  const handleExpandPost = (postId: string) => {
+    setExpandedPost(expandedPost === postId ? null : postId)
+  }
+
+  const handleViewDetails = (postId: string) => {
+    router.push(`/content/${postId}`)
+  }
   
   const [activeTab, setActiveTab] = useState<FeedType>('all');
   const [glowPosition, setGlowPosition] = useState({ x: 0, y: 0 });
 
-  // Memoize the wallet address to prevent unnecessary re-renders
   const walletAddress = useMemo(() => wallets?.[0]?.address || null, [wallets]);
 
-  // Filter and memoize the current feed items to prevent duplicate processing
   const currentFeedItems = useMemo(() => {
     if (!feeds[activeTab]?.length) return [];
     
-    // Deduplicate items by ID
-    const uniqueItems = feeds[activeTab].filter(
+    return feeds[activeTab].filter(
       (item, index, self) => self.findIndex(i => i.id === item.id) === index
     );
-
-    return uniqueItems;
   }, [feeds, activeTab]);
 
-  const handleMouseMove = (e: React.MouseEvent) => {
+  const handleMouseMove = useCallback((e: React.MouseEvent) => {
     const rect = e.currentTarget.getBoundingClientRect();
     setGlowPosition({
       x: e.clientX - rect.left,
       y: e.clientY - rect.top
     });
-  };
+  }, []);
 
-  const handleProfileClick = (userId: string) => {
+  const handleProfileClick = useCallback((userId: string) => {
     router.push(`/profile/${userId}`);
+  }, [router]);
+
+  const handleTabChange = useCallback((tab: FeedType) => {
+    setActiveTab(tab);
+    if (feeds[tab]?.length === 0) {
+      fetchMore(tab);
+    }
+  }, [feeds, fetchMore]);
+
+  const handleLikeClick = useCallback((itemId: string) => {
+    if (!authenticated) {
+      toast.error('Connect your wallet to like posts');
+      return;
+    }
+    handleLike(itemId);
+  }, [authenticated, handleLike]);
+
+const renderItem = useCallback((item: FeedItem) => {
+  const user = item.data.user || item.data.donor || item.data.author || { 
+    id: '', 
+    username: 'User', 
+    avatar: null 
   };
 
-  const renderItem = (item: any) => {
-    // Get the correct user object based on item type
-    const user = item.data.user || 
-                 item.data.donor || 
-                 item.data.author || 
-                 { username: 'User', avatar: null };
+  const isLiked = walletAddress && item.data.likes?.some((like) => like.userId === walletAddress);
+  const likeCount = item.data.likes?.length || 0;
+  const commentCount = item.data.comments?.length || 0;
+  const isProcessing = isProcessingLike[item.id];
+  const isExpanded = expandedPost === item.id;
 
-    const isLiked = walletAddress && item.data.likes?.some((like: any) => like.userId === walletAddress);
-    const likeCount = item.data.likes?.length || 0;
-    const isProcessing = isProcessingLike[item.id];
-
-    return (
-      <motion.div 
-        key={`${item.type}-${item.id}`}
-        className="relative overflow-hidden"
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4 }}
+  return (
+    <motion.div 
+      key={`${item.type}-${item.id}`}
+      className="relative overflow-hidden"
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4 }}
+    >
+      <div 
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          background: `radial-gradient(600px at ${glowPosition.x}px ${glowPosition.y}px, rgba(100, 255, 255, 0.1), transparent 80%)`
+        }}
+      />
+      
+      <div 
+        className="border border-cyan-400/20 bg-gray-900/80 backdrop-blur-sm p-6 mb-4 
+                  relative z-10 hover:border-cyan-400/40 transition-all duration-300
+                  shadow-lg shadow-cyan-500/10 hover:shadow-cyan-500/20"
+        onMouseMove={handleMouseMove}
       >
-        {/* Glow effect container */}
-        <div 
-          className="absolute inset-0 pointer-events-none"
-          style={{
-            background: `radial-gradient(600px at ${glowPosition.x}px ${glowPosition.y}px, rgba(100, 255, 255, 0.1), transparent 80%)`
-          }}
-        />
-        
-        <div 
-          className="border border-cyan-400/20 bg-gray-900/80 backdrop-blur-sm p-6 mb-4 
-                    relative z-10 hover:border-cyan-400/40 transition-all duration-300
-                    shadow-lg shadow-cyan-500/10 hover:shadow-cyan-500/20"
-          onMouseMove={handleMouseMove}
-        >
-          {/* Item content */}
-          <div className="flex items-start gap-4">
-            {/* Avatar with neon border */}
-            <div className="relative">
-              <div className="absolute inset-0 rounded-full bg-cyan-400 blur-md opacity-20 animate-pulse" />
-              {user.avatar ? (
-                <img 
-                  onClick={()=>{handleProfileClick(user.id)}}
-                  src={user.avatar} 
-                  alt={user.username} 
-                  className="w-12 h-12 rounded-full relative z-10 border border-cyan-400/30"
-                />
-              ) : (
-                <div
-                 onClick={()=>{handleProfileClick(user.id)}}
-                 className="w-12 h-12 rounded-full bg-gradient-to-br from-cyan-400/20 to-pink-400/20 flex items-center justify-center relative z-10 border border-cyan-400/30">
-                  {user.username?.[0] || 'U'}
-                </div>
-              )}
-            </div>
-
-            <div className="flex-1">
-              {/* Header with username and time */}
-              <div className="flex items-center mb-2">
-                <span
-                onClick={()=>{handleProfileClick(user.id)}}
-                className="font-bold text-cyan-100 tracking-wide">
-                  {user.username}
-                </span>
-                <span className="text-xs text-cyan-400 ml-auto font-mono">
-                  {new Date(item.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                </span>
+        <div className="flex items-start gap-4">
+          <div className="relative">
+            <div className="absolute inset-0 rounded-full bg-cyan-400 blur-md opacity-20 animate-pulse" />
+            {user.avatar ? (
+              <img 
+                onClick={() => handleProfileClick(user.id)}
+                src={user.avatar} 
+                alt={user.username} 
+                className="w-12 h-12 rounded-full relative z-10 border border-cyan-400/30 cursor-pointer"
+              />
+            ) : (
+              <div
+                onClick={() => handleProfileClick(user.id)}
+                className="w-12 h-12 rounded-full bg-gradient-to-br from-cyan-400/20 to-pink-400/20 flex items-center justify-center relative z-10 border border-cyan-400/30 cursor-pointer"
+              >
+                {user.username?.[0]?.toUpperCase() || 'U'}
               </div>
-
-              {/* Content specific rendering */}
-              {item.type === 'post' && (
-                <div className="mb-3">
-                  <h3 className="text-lg font-medium text-cyan-50 mb-1">{item.data.title}</h3>
-                  {item.data.content && <p className="text-cyan-100 text-sm">{item.data.content}</p>}
-                </div>
-              )}
-
-              {/* Activity message with icon */}
-              <div className="flex items-start gap-2 mb-2">
-                <span className="text-cyan-400 mt-0.5">
-                  {item.type === 'tip' ? (
-                    <Gift className="h-5 w-5" />
-                  ) : item.type === 'activity' ? (
-                    <Activity className="h-5 w-5" />
-                  ) : (
-                    <Zap className="h-5 w-5" />
-                  )}
-                </span>
-                <p className="text-cyan-100 text-sm">
-                  {item.data.message || item.data.content || 'New activity'}
-                </p>
-              </div>
-
-              {/* Action buttons */}
-              <div className="flex items-center gap-4 mt-3">
-                <button 
-                  onClick={() => authenticated ? handleLike(item.id) : toast.error('Connect your wallet to like posts')}
-                  disabled={isProcessing || !authenticated}
-                  className={`flex items-center gap-1 text-xs font-mono tracking-wider ${
-                    isLiked ? 'text-pink-400' : 'text-cyan-400 hover:text-cyan-300'
-                  } ${isProcessing || !authenticated ? 'opacity-50 cursor-not-allowed' : ''}`}
-                >
-                  <Heart className="h-4 w-4" fill={isLiked ? 'currentColor' : 'none'} />
-                  <span>[{likeCount}]</span>
-                </button>
-                
-                {item.type === 'post' && (
-                  <button className="flex items-center gap-1 text-xs font-mono tracking-wider text-cyan-400 hover:text-cyan-300">
-                    <MessageSquare className="h-4 w-4" />
-                    <span>[{item.data.comments?.length || 0}]</span>
-                  </button>
-                )}
-              </div>
-            </div>
+            )}
           </div>
 
-          {/* Animated border bottom */}
-          <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-cyan-400/0 via-cyan-400/80 to-cyan-400/0" />
-        </div>
-      </motion.div>
-    );
-  };
+          <div className="flex-1">
+            <div className="flex items-center mb-2">
+              <span
+                onClick={() => handleProfileClick(user.id)}
+                className="font-bold text-cyan-100 tracking-wide cursor-pointer hover:text-cyan-300 transition-colors"
+              >
+                {user.username}
+              </span>
+              <span className="text-xs text-cyan-400 ml-auto font-mono">
+                {new Date(item.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              </span>
+            </div>
 
-  // Loading and auth states remain the same...
+            {item.type === 'post' && (
+              <div className="mb-3">
+                <h3 className="text-lg font-medium text-cyan-50 mb-1">{item.data.title}</h3>
+                {item.data.content && (
+                  <p className={`text-cyan-100 text-sm ${!isExpanded ? 'line-clamp-2' : ''}`}>
+                    {item.data.content}
+                  </p>
+                )}
+              </div>
+            )}
+
+            <div className="flex items-start gap-2 mb-2">
+              <span className="text-cyan-400 mt-0.5">
+                {item.type === 'tip' ? (
+                  <Gift className="h-5 w-5" />
+                ) : item.type === 'activity' ? (
+                  <Activity className="h-5 w-5" />
+                ) : (
+                  <Zap className="h-5 w-5" />
+                )}
+              </span>
+              <p className="text-cyan-100 text-sm">
+                {item.data.message || item.data.content || 'New activity'}
+              </p>
+            </div>
+
+            <div className="flex items-center gap-4 mt-3">
+              <button 
+                onClick={() => handleLikeClick(item.id)}
+                disabled={isProcessing}
+                className={`flex items-center gap-1 text-xs font-mono tracking-wider ${
+                  isLiked ? 'text-pink-400' : 'text-cyan-400 hover:text-cyan-300'
+                } ${isProcessing ? 'opacity-50 cursor-not-allowed' : ''}`}
+              >
+                <Heart className="h-4 w-4" fill={isLiked ? 'currentColor' : 'none'} />
+                <span>[{likeCount}]</span>
+              </button>
+              
+              {item.type === 'post' && (
+                <button 
+                  onClick={() => handleExpandPost(item.id)}
+                  className="flex items-center gap-1 text-xs font-mono tracking-wider text-cyan-400 hover:text-cyan-300"
+                >
+                  <MessageSquare className="h-4 w-4" />
+                  <span>[{commentCount}]</span>
+                </button>
+              )}
+
+              {item.type === 'post' && (
+                <button
+                  onClick={() => handleViewDetails(item.id)}
+                  className="text-xs font-mono tracking-wider text-cyan-400 hover:text-cyan-300 ml-auto"
+                >
+                  View Full
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Expanded content section */}
+        {isExpanded && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            transition={{ duration: 0.3 }}
+            className="mt-4 pt-4 border-t border-cyan-400/10"
+          >
+            {item.data.mediaUrl && (
+              <div className="mb-4 rounded-lg overflow-hidden">
+                {item.data.mediaType === 'IMAGE' && (
+                  <img 
+                    src={item.data.mediaUrl} 
+                    alt={item.data.title} 
+                    className="w-full max-h-96 object-contain"
+                  />
+                )}
+                {item.data.mediaType === 'VIDEO' && (
+                  <video 
+                    src={item.data.mediaUrl} 
+                    controls 
+                    className="w-full max-h-96"
+                  />
+                )}
+              </div>
+            )}
+
+            <CommentsSection 
+              postId={item.id} 
+              initialComments={item.data.comments || []}
+            />
+          </motion.div>
+        )}
+
+        <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-cyan-400/0 via-cyan-400/80 to-cyan-400/0" />
+      </div>
+    </motion.div>
+  );
+}, [
+  glowPosition, 
+  handleMouseMove, 
+  handleProfileClick, 
+  handleLikeClick, 
+  handleExpandPost,
+  handleViewDetails,
+  isProcessingLike, 
+  walletAddress,
+  expandedPost
+]);
+
   if (!ready) return <LoadingView />;
   if (!authenticated) return <AuthRequiredView />;
 
   return (
     <div className="min-h-screen bg-gray-950 text-cyan-100 font-mono">
-      {/* Glow background */}
       <div className="fixed inset-0 pointer-events-none">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-cyan-500/10 to-transparent" />
       </div>
@@ -204,7 +305,6 @@ export default function Feed() {
           NEURAL_FEED
         </motion.h1>
         
-        {/* Tabs */}
         <div className="flex border-b border-cyan-400/20 mb-6 relative">
           <motion.div
             layoutId="tabIndicator"
@@ -219,12 +319,7 @@ export default function Feed() {
           {(['all', 'content', 'donations', 'activity'] as FeedType[]).map((tab) => (
             <button
               key={tab}
-              onClick={() => {
-                setActiveTab(tab);
-                if (feeds[tab]?.length === 0) {
-                  fetchMore(tab);
-                }
-              }}
+              onClick={() => handleTabChange(tab)}
               className={`px-4 py-3 text-sm font-medium relative uppercase tracking-wider ${
                 activeTab === tab
                   ? 'text-cyan-400'
@@ -236,7 +331,6 @@ export default function Feed() {
           ))}
         </div>
         
-        {/* Feed items */}
         <div className="space-y-6">
           {currentFeedItems.length > 0 ? (
             currentFeedItems.map(renderItem)
@@ -245,7 +339,6 @@ export default function Feed() {
           )}
         </div>
 
-        {/* Load more button */}
         {hasMore[activeTab] && (
           <LoadMoreButton 
             loading={loading} 
@@ -257,7 +350,6 @@ export default function Feed() {
   );
 }
 
-// Extracted components for better readability
 const LoadingView = () => (
   <div className="min-h-screen bg-gray-950 flex items-center justify-center">
     <div className="text-center">
@@ -287,7 +379,12 @@ const EmptyFeedView = () => (
   </motion.div>
 );
 
-const LoadMoreButton = ({ loading, onClick }: { loading: boolean; onClick: () => void }) => (
+interface LoadMoreButtonProps {
+  loading: boolean;
+  onClick: () => void;
+}
+
+const LoadMoreButton = ({ loading, onClick }: LoadMoreButtonProps) => (
   <motion.button
     onClick={onClick}
     disabled={loading}
