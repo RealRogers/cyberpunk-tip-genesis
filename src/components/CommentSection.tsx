@@ -28,7 +28,7 @@ const formatDate = (dateString: string) => {
   return date.toLocaleString('en-US', options)
 }
 
-export default function CommentsSection({ postId, initialComments = [] }: { 
+export default function CommentSection({ postId, initialComments = [] }: { 
   postId: string, 
   initialComments?: Comment[] 
 }) {
