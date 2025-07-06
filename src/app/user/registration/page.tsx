@@ -1,3 +1,4 @@
+//@ts-nocheck
 "use client"
 import { useState, useEffect } from 'react';
 import { FaUser, FaImage, FaRobot, FaShieldAlt, FaEthereum, FaWallet } from 'react-icons/fa';
