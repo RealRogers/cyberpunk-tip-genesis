@@ -16,29 +16,110 @@ import {
 } from "lucide-react";
 import { useUser } from '../../providers/UserProvider';
 import { useRouter, useParams } from 'next/navigation';
+import { usePrivy, useWallets } from '@privy-io/react-auth';
 
 type ProfileTab = 'about' | 'activity';
 type ActivityTab = 'all' | 'posts' | 'tips' | 'interactions';
 
 export default function ProfileView() {
-  const router = useRouter();
-  const params = useParams();
-  const userId = params?.id as string;
-  
-  const {
+      const {
     user: currentUser,
     getUserProfile,
     fetchUserActivity,
     fetchUserActivitybyId,
+    walletAddress
   } = useUser();
+  const router = useRouter();
+  const params = useParams();
+  const userId = params?.id as string;
+  const { ready, authenticated } = usePrivy();
+  const { wallets } = useWallets();
+  const currentWallet = currentUser?.id;
+
+  
+
 
   const [profileUser, setProfileUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<ProfileTab>('about');
   const [activeActivityTab, setActiveActivityTab] = useState<ActivityTab>('all');
   const [activity, setActivity] = useState(null);
+  const [isFollowing, setIsFollowing] = useState(false);
+  const [isFollowLoading, setIsFollowLoading] = useState(false);
+  const [followers, setFollowers] = useState<any[]>([]);
+  const [following, setFollowing] = useState<any[]>([]);
+  const [loadingStats, setLoadingStats] = useState(false);
+
+  // Check follow status
+  const checkFollowStatus = async () => {
+    console.log("check for follow",ready,authenticated,currentWallet)
+    if (!ready || !authenticated || !currentWallet) return;
+    
+    try {
+      const res = await fetch(`/api/follow/${userId}`, {
+        headers: { 'x-wallet-address': currentWallet }
+      });
+      const data = await res.json();
+      console.log('data',data)
+      setIsFollowing(data.isFollowing);
+    } catch (error) {
+      console.error("Failed to check follow status:", error);
+    }
+  };
+
+  // Toggle follow
+  const toggleFollow = async () => {
+    if (!ready || !authenticated || !currentWallet) return;
+    
+    setIsFollowLoading(true);
+    try {
+      const res = await fetch(`/api/follow/${userId}`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'x-wallet-address': currentWallet 
+        },
+        body: JSON.stringify({ wallet: currentWallet })
+      });
+      console.log("res",res)
+      
+      if (!res.ok) throw new Error("Follow action failed");
+      
+      const data = await res.json();
+      setIsFollowing(data.isFollowing);
+      toast.success(data.isFollowing ? "Followed!" : "Unfollowed");
+      
+      // Refresh follow counts
+      await loadFollowData();
+    } catch (error) {
+      toast.error("Failed to update follow status");
+      console.error(error);
+    } finally {
+      setIsFollowLoading(false);
+    }
+  };
+
+  // Load follow data (followers and following)
+  const loadFollowData = async () => {
+    setLoadingStats(true);
+    try {
+      const [followersRes, followingRes] = await Promise.all([
+        fetch(`/api/follow/${userId}/followers`),
+        fetch(`/api/follow/${userId}/following`)
+      ]);
+      setFollowers(await followersRes.json());
+      setFollowing(await followingRes.json());
+    } catch (error) {
+      console.error("Failed to load follow data:", error);
+    } finally {
+      setLoadingStats(false);
+    }
+  };
 
 
+  useEffect(()=>{
+   checkFollowStatus()
+  },[currentUser])
 
   // Load profile data
   useEffect(() => {
@@ -46,11 +127,11 @@ export default function ProfileView() {
       try {
         setLoading(true);
         const userData = await getUserProfile(userId);
-        const activity = await fetchUserActivitybyId(userId)
-        console.log("activity",activity)
+        const activity = await fetchUserActivitybyId(userId);
         setProfileUser(userData);
-        //@ts-ignore
-        setActivity(activity)
+        setActivity(activity);
+        
+        // Load follow data
       } catch (error) {
         console.error('Error loading profile:', error);
         toast.error('Failed to load profile');
@@ -59,11 +140,8 @@ export default function ProfileView() {
       }
     };
 
-    if (userId) loadProfile();
-  }, [userId, getUserProfile]);
-
-  // Load activity when tab changes
-
+   if(wallets) loadProfile();
+  }, [userId, getUserProfile, fetchUserActivitybyId]);
 
   const filterActivities = () => {
     if (!activity) return [];
@@ -117,7 +195,6 @@ export default function ProfileView() {
       }
     }
 
-    // Sort by date (newest first)
     return items.sort((a: any, b: any) => {
       const dateA = new Date(a.createdAt || a.timestamp);
       const dateB = new Date(b.createdAt || b.timestamp);
@@ -228,7 +305,6 @@ export default function ProfileView() {
 
     return (
       <div className="space-y-4">
-        {/* Activity filter tabs */}
         <div className="flex border-b border-gray-700 mb-6">
           <button 
             className={`px-4 py-2 text-sm ${activeActivityTab === 'all' ? 'border-b-2 border-cyan-400 text-cyan-400' : 'text-gray-400'}`}
@@ -256,7 +332,6 @@ export default function ProfileView() {
           </button>
         </div>
 
-        {/* Activity items */}
         <div className="space-y-4">
           {filteredActivities.length > 0 ? (
             filteredActivities.map((item, index) => (
@@ -296,14 +371,13 @@ export default function ProfileView() {
     );
   }
 
-  const isOwnProfile = userId === currentUser?.wallet;
+  const isOwnProfile = userId === currentWallet;
 
   return (
     <div className="min-h-screen bg-black text-white font-mono overflow-hidden relative">
       <Toaster position="top-center" toastOptions={{ duration: 3000 }} />
       
       <main className="max-w-4xl mx-auto px-4 py-8 relative z-10">
-        {/* Profile Header */}
         <motion.div 
           className="mb-8 border border-cyan-400/20 bg-gray-900/50 backdrop-blur-md overflow-hidden"
           initial={{ opacity: 0, y: 20 }}
@@ -320,19 +394,33 @@ export default function ProfileView() {
             ) : (
               <div className="w-full h-full bg-gradient-to-r from-cyan-400/10 via-pink-400/10 to-cyan-400/10" />
             )}
-            {isOwnProfile && (
-              <button 
-                onClick={() => router.push('/profile')}
-                className="absolute top-4 right-4 bg-gray-900/80 border border-cyan-400/20 px-3 py-1 text-xs flex items-center"
-              >
-                EDIT_PROFILE
-              </button>
-            )}
+            <div className="absolute top-4 right-4 flex space-x-2">
+              {isOwnProfile && (
+                <button 
+                  onClick={() => router.push('/profile')}
+                  className="bg-gray-900/80 border border-cyan-400/20 px-3 py-1 text-xs flex items-center"
+                >
+                  EDIT_PROFILE
+                </button>
+              )}
+              {!isOwnProfile && authenticated && (
+                <button
+                  onClick={toggleFollow}
+                  disabled={isFollowLoading}
+                  className={`px-3 py-1 text-xs border ${
+                    isFollowing
+                      ? 'border-gray-600 text-gray-400 hover:bg-gray-800/50'
+                      : 'border-cyan-400 text-cyan-400 hover:bg-cyan-400/10'
+                  } transition-colors`}
+                >
+                  {isFollowLoading ? '...' : isFollowing ? 'FOLLOWING' : 'FOLLOW'}
+                </button>
+              )}
+            </div>
           </div>
           
           <div className="p-6 pt-0">
             <div className="flex flex-col md:flex-row md:items-end md:space-x-6 -mt-20 relative z-10">
-              {/* Avatar */}
               <div className="relative mb-4 md:mb-0">
                 <div className="h-32 w-32 rounded-full border-4 border-gray-900 bg-gradient-to-br from-cyan-400/20 to-pink-400/20 overflow-hidden">
                   {profileUser?.avatar ? (
@@ -345,7 +433,6 @@ export default function ProfileView() {
                 </div>
               </div>
 
-              {/* Profile Info */}
               <div className="flex-1 md:mb-6">
                 <div className="flex items-center space-x-2 mb-2">
                   <h1 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-pink-400">
@@ -359,7 +446,6 @@ export default function ProfileView() {
                 </div>
                 <p className="text-gray-400 mb-2">@{profileUser?.username || 'user'}</p>
                 
-                {/* Social Links and Info */}
                 <div className="flex flex-wrap gap-4 text-xs text-gray-400 mb-4">
                   <div className="flex items-center">
                     <Calendar className="h-3 w-3 mr-1" />
@@ -381,16 +467,15 @@ export default function ProfileView() {
                   )}
                 </div>
                 
-                {/* Stats */}
                 <div className="flex flex-wrap gap-6 text-xs">
                   <div className="flex items-center space-x-1">
                     <Users className="h-3 w-3 text-cyan-400" />
-                    <span className="font-bold">{profileUser?.followers || 0}</span>
+                    <span className="font-bold">{followers?.length || 0}</span>
                     <span className="text-gray-400">FOLLOWERS</span>
                   </div>
                   <div className="flex items-center space-x-1">
                     <Users className="h-3 w-3 text-pink-400" />
-                    <span className="font-bold">{profileUser?.following || 0}</span>
+                    <span className="font-bold">{following?.length || 0}</span>
                     <span className="text-gray-400">FOLLOWING</span>
                   </div>
                   <div className="flex items-center space-x-1">
@@ -404,7 +489,6 @@ export default function ProfileView() {
           </div>
         </motion.div>
 
-        {/* Tabs */}
         <div className="space-y-6">
           <div className="flex border-b border-gray-700">
             <button 
@@ -423,7 +507,6 @@ export default function ProfileView() {
 
           {activeTab === 'about' ? (
             <>
-              {/* About Section */}
               <motion.div 
                 className="border border-cyan-400/20 bg-gray-900/50 p-6"
                 initial={{ opacity: 0 }}
@@ -491,7 +574,6 @@ export default function ProfileView() {
                 </div>
               </motion.div>
 
-              {/* Stats Section */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <motion.div 
                   className="border border-cyan-400/20 bg-gray-900/50 p-6"
@@ -507,7 +589,7 @@ export default function ProfileView() {
                     {profileUser?.totalTipsReceived?.toFixed(3) || 0} ETH
                   </div>
                   <p className="text-xs text-gray-400">
-                    FROM {profileUser?.followers || 0} SUPPORTERS
+                    FROM {followers?.length || 0} SUPPORTERS
                   </p>
                 </motion.div>
 
@@ -525,12 +607,11 @@ export default function ProfileView() {
                     {profileUser?.totalTipsSent?.toFixed(3) || 0} ETH
                   </div>
                   <p className="text-xs text-gray-400">
-                    SUPPORTING {profileUser?.following || 0} CREATORS
+                    SUPPORTING {following?.length || 0} CREATORS
                   </p>
                 </motion.div>
               </div>
 
-              {/* Additional Stats */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <motion.div 
                   className="border border-purple-400/20 bg-gray-900/50 p-6"
@@ -561,10 +642,10 @@ export default function ProfileView() {
                     <h3 className="text-lg font-bold">SOCIAL</h3>
                   </div>
                   <div className="text-3xl font-bold text-green-400 mb-2">
-                    {(profileUser?.followers || 0) + (profileUser?.following || 0)}
+                    {(followers?.length || 0) + (following?.length || 0)}
                   </div>
                   <p className="text-xs text-gray-400">
-                    {profileUser?.followers || 0} FOLLOWERS • {profileUser?.following || 0} FOLLOWING
+                    {followers?.length || 0} FOLLOWERS • {following?.length || 0} FOLLOWING
                   </p>
                 </motion.div>
 
