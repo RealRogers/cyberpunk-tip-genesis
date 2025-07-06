@@ -1,5 +1,4 @@
 //@ts-nocheck
-// contexts/UserContext.tsx
 "use client";
 import {
   createContext,
@@ -7,12 +6,13 @@ import {
   useState,
   useEffect,
   useCallback,
+  useMemo,
 } from "react";
 import { usePrivy, useWallets } from "@privy-io/react-auth";
 import { useRouter } from "next/navigation";
 import { toast } from "react-hot-toast";
 
-// Add this interface to your types
+// Keep all your existing interfaces exactly as they were
 interface UserActivity {
   posts: any[];
   donationsSent: any[];
@@ -94,7 +94,8 @@ interface UserContextType {
   activityLoading: boolean;
   fetchUserActivity: () => Promise<void>;
   refreshActivity: () => Promise<void>;
-  fetchUserActivitybyId:(userId: string) => Promise<UserActivity | null>;
+  fetchUserActivitybyId: (userId: string) => Promise<UserActivity | null>;
+  walletAddress: string;
 }
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
@@ -152,14 +153,73 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(authenticated);
   const [isRegistered, setIsRegistered] = useState(false);
   const [isArtist, setIsArtist] = useState(true);
-
-  const walletAddress = wallets[0]?.address;
-
   const [activity, setActivity] = useState<UserActivity | null>(null);
   const [activityLoading, setActivityLoading] = useState(false);
 
-  // Add these functions
-  const fetchUserActivity = useCallback(async () => {
+  // Memoize wallet address to prevent unnecessary recalculations
+  const walletAddress = useMemo(() => wallets[0]?.address, [wallets]);
+
+  // Centralized error handler to avoid duplicate error handling code
+  const handleError = useCallback((error: unknown, defaultMessage: string) => {
+    console.error(defaultMessage, error);
+    toast.error(defaultMessage);
+  }, []);
+
+  // Main data fetching function with all optimizations
+  const fetchUserData = useCallback(async () => {
+    if (!ready || !authenticated || !walletAddress) {
+      setLoading(false);
+      return;
+    }
+
+    try {
+      setLoading(true);
+      
+      // Use Promise.all to fetch user and artist data in parallel
+      const [userResponse, artistResponse] = await Promise.all([
+        fetch(`/api/users?wallet=${walletAddress}`),
+        fetch(`/api/artist?wallet=${walletAddress}`),
+      ]);
+
+      if (!userResponse.ok) {
+        router.push("/user/registration");
+        return;
+      }
+
+      const userData = await userResponse.json();
+      const artistData = artistResponse.ok ? await artistResponse.json() : null;
+
+      const mergedProfile = {
+        ...defaultProfile,
+        ...userData,
+        id: walletAddress,
+        wallet: walletAddress,
+        name: privyUser?.name || userData.username || `User${walletAddress.slice(0, 6)}`,
+        username: userData.username || `@user${walletAddress.slice(0, 6)}`,
+        avatar: privyUser?.picture?.url || userData.avatar || "",
+        ...(artistData ? {
+          name: artistData.name || userData.username,
+          bio: artistData.bio || "",
+          avatar: artistData.image || privyUser?.picture?.url || userData.avatar,
+          category: artistData.genre || "",
+          totalTipsReceived: artistData.totalTips || 0,
+          stakingPower: artistData.stakingPower || 0,
+          isArtist: true,
+        } : {}),
+      };
+
+      setUser(mergedProfile);
+      setIsRegistered(true);
+      setIsArtist(!!artistData);
+    } catch (error) {
+      handleError(error, "Failed to load user data");
+    } finally {
+      setLoading(false);
+    }
+  }, [ready, authenticated, walletAddress, privyUser, router, handleError]);
+
+  // Optimized activity fetching with abort controller support
+  const fetchUserActivity = useCallback(async (signal?: AbortSignal) => {
     if (!walletAddress) {
       toast.error("Wallet not connected");
       return;
@@ -167,9 +227,9 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
     try {
       setActivityLoading(true);
-      const response = await fetch(
-        `/api/users/activity?wallet=${walletAddress}`
-      );
+      const response = await fetch(`/api/users/activity?wallet=${walletAddress}`, {
+        signal
+      });
 
       if (!response.ok) {
         throw new Error("Failed to fetch activity data");
@@ -178,89 +238,44 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       const data = await response.json();
       setActivity(data.activity);
     } catch (error) {
-      console.error("Error fetching user activity:", error);
-      toast.error("Failed to load activity data");
-      setActivity(null);
+      // Only handle error if it's not an abort error
+      if (error.name !== 'AbortError') {
+        handleError(error, "Failed to load activity data");
+        setActivity(null);
+      }
     } finally {
       setActivityLoading(false);
     }
-  }, [walletAddress]);
+  }, [walletAddress, handleError]);
 
+  // Optimized refresh function that reuses fetchUserActivity
   const refreshActivity = useCallback(async () => {
-    await fetchUserActivity();
+    const controller = new AbortController();
+    await fetchUserActivity(controller.signal);
+    return () => controller.abort();
   }, [fetchUserActivity]);
 
-  // Add automatic fetching when wallet changes
-  useEffect(() => {
-    if (walletAddress && authenticated) {
-      fetchUserActivity();
-    } else {
-      setActivity(null);
-    }
-  }, [walletAddress, authenticated, fetchUserActivity]);
-
-  // Fetch user data
-  const fetchUserData = useCallback(async () => {
-    if (!ready || !authenticated || !walletAddress) {
-      // setLoading(false);
-      return;
-    }
-
+  // Fetch user activity by ID with proper loading states
+  const fetchUserActivitybyId = useCallback(async (userId: string) => {
     try {
-      // Fetch user data
-      const userResponse = await fetch(`/api/users?wallet=${walletAddress}`);
-      const userData = await userResponse.json();
-      console.log("user data ", userData);
-      if (userData.error) {
-        router.push("/user/registration");
+      setActivityLoading(true);
+      const response = await fetch(`/api/users/activity?wallet=${userId}`);
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch activity data");
       }
 
-      // Check if user has artist profile
-      const artistResponse = await fetch(`/api/artist?wallet=${walletAddress}`);
-      const artistData = artistResponse.ok ? await artistResponse.json() : null;
-
-      const mergedProfile = {
-        ...defaultProfile,
-        ...userData,
-        id: walletAddress,
-        wallet: walletAddress,
-        name:
-          privyUser?.name ||
-          userData.username ||
-          `User${walletAddress.slice(0, 6)}`,
-        username: userData.username || `@user${walletAddress.slice(0, 6)}`,
-        avatar: privyUser?.picture?.url || userData.avatar || "",
-        ...(artistData
-          ? {
-              name: artistData.name || userData.username,
-              bio: artistData.bio || "",
-              avatar:
-                artistData.image || privyUser?.picture?.url || userData.avatar,
-              category: artistData.genre || "",
-              totalTipsReceived: artistData.totalTips || 0,
-              stakingPower: artistData.stakingPower || 0,
-              isArtist: true,
-            }
-          : {}),
-      };
-
-      setUser(mergedProfile);
-      setIsRegistered(true);
-      setIsArtist(!!artistData);
+      const data = await response.json();
+      return data.activity;
     } catch (error) {
-      console.error("Error fetching user data:", error);
-      toast.error("Failed to load user data");
+      handleError(error, "Failed to load activity data");
+      return null;
     } finally {
-      setLoading(false);
+      setActivityLoading(false);
     }
-  }, [ready, authenticated, walletAddress, privyUser]);
+  }, [handleError]);
 
-  // Check registration status on wallet change
-  useEffect(() => {
-    fetchUserData();
-  }, [fetchUserData]);
-
-  // Connect wallet handler
+  // Wallet connection handler
   const connectWallet = useCallback(async () => {
     try {
       if (!authenticated) {
@@ -268,12 +283,11 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       }
       toast.success("Wallet connected successfully");
     } catch (error) {
-      console.error("Login error:", error);
-      toast.error("Failed to connect wallet");
+      handleError(error, "Failed to connect wallet");
     }
-  }, [authenticated, login]);
+  }, [authenticated, login, handleError]);
 
-  // Disconnect wallet handler
+  // Wallet disconnection handler
   const disconnectWallet = useCallback(async () => {
     try {
       await logout();
@@ -283,172 +297,156 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       toast.success("Disconnected successfully");
       router.push("/");
     } catch (error) {
-      console.error("Logout error:", error);
-      toast.error("Failed to disconnect wallet");
+      handleError(error, "Failed to disconnect wallet");
     }
-  }, [logout, router]);
+  }, [logout, router, handleError]);
 
-  // Register new user
-  const registerUser = useCallback(
-    async (userData: Partial<UserProfile>) => {
-      if (!walletAddress) {
-        toast.error("Wallet not connected");
-        return;
-      }
+  // User registration function
+  const registerUser = useCallback(async (userData: Partial<UserProfile>) => {
+    if (!walletAddress) {
+      toast.error("Wallet not connected");
+      return;
+    }
 
-      try {
-        setLoading(true);
-
-        const response = await fetch("/api/users", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            wallet: walletAddress,
-            username: userData.username,
-            avatar: userData.avatar,
-            stakingPower: userData.stakingPower || 100,
-            reputation: userData.reputation || 0,
-            tier: userData.tier || "CYBER_NOVICE",
-          }),
-        });
-
-        if (!response.ok) {
-          throw new Error("Failed to register user");
-        }
-
-        const newUser = await response.json();
-        setUser((prev) => ({
-          ...defaultProfile,
-          ...prev,
-          ...newUser,
-          id: walletAddress,
+    try {
+      setLoading(true);
+      const response = await fetch("/api/users", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
           wallet: walletAddress,
-        }));
-        setIsRegistered(true);
-        toast.success("Registration successful!");
-      } catch (error) {
-        console.error("Registration error:", error);
-        toast.error("Registration failed. Please try again.");
-      } finally {
-        setLoading(false);
-      }
-    },
-    [walletAddress]
-  );
+          username: userData.username,
+          avatar: userData.avatar,
+          stakingPower: userData.stakingPower || 100,
+          reputation: userData.reputation || 0,
+          tier: userData.tier || "CYBER_NOVICE",
+        }),
+      });
 
-  // Update user profile
-  const updateProfile = useCallback(
-    async (updatedData: Partial<UserProfile>) => {
-      if (!user || !walletAddress) {
-        toast.error("User not authenticated");
-        return;
+      if (!response.ok) {
+        throw new Error("Failed to register user");
       }
 
-      try {
-        setLoading(true);
+      const newUser = await response.json();
+      setUser((prev) => ({
+        ...defaultProfile,
+        ...prev,
+        ...newUser,
+        id: walletAddress,
+        wallet: walletAddress,
+      }));
+      setIsRegistered(true);
+      toast.success("Registration successful!");
+    } catch (error) {
+      handleError(error, "Registration failed. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  }, [walletAddress, handleError]);
 
-        // Update user data
-        const userResponse = await fetch("/api/users", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            wallet: walletAddress,
-            username: updatedData.username || user.username,
-            avatar: updatedData.avatar || user.avatar,
-            stakingPower: updatedData.stakingPower || user.stakingPower,
-            reputation: updatedData.reputation || user.reputation,
-            tier: updatedData.tier || user.tier,
-            totalTipsGiven: updatedData.totalTipsGiven || user.totalTipsGiven,
-            streakDays: updatedData.streakDays || user.streakDays,
-          }),
-        });
+  // Profile update function with artist profile handling
+  const updateProfile = useCallback(async (updatedData: Partial<UserProfile>) => {
+    if (!user || !walletAddress) {
+      toast.error("User not authenticated");
+      return;
+    }
 
-        if (!userResponse.ok) {
-          throw new Error("Failed to update user data");
-        }
+    try {
+      setLoading(true);
 
-        // Handle artist profile if isArtist is true
-        if (updatedData.isArtist) {
-          const artistResponse = await fetch(
-            `/api/artist?wallet=${walletAddress}`
-          );
-          const existingArtist = artistResponse.ok
-            ? await artistResponse.json()
-            : null;
+      // Update user data
+      const userResponse = await fetch("/api/users", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          wallet: walletAddress,
+          username: updatedData.username || user.username,
+          avatar: updatedData.avatar || user.avatar,
+          stakingPower: updatedData.stakingPower || user.stakingPower,
+          reputation: updatedData.reputation || user.reputation,
+          tier: updatedData.tier || user.tier,
+          totalTipsGiven: updatedData.totalTipsGiven || user.totalTipsGiven,
+          streakDays: updatedData.streakDays || user.streakDays,
+        }),
+      });
 
-          let artistSaveResponse;
-          if (existingArtist?.id) {
-            // Update existing artist profile
-            artistSaveResponse = await fetch("/api/artist", {
-              method: "PUT",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({
-                id: existingArtist.id,
-                wallet: walletAddress,
-                name: updatedData.name || user.name,
-                bio: updatedData.bio || user.bio,
-                image: updatedData.avatar || user.avatar,
-                genre: updatedData.category || user.category,
-                stakingPower: updatedData.stakingPower || user.stakingPower,
-              }),
-            });
-          } else {
-            // Create new artist profile
-            artistSaveResponse = await fetch("/api/artist", {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({
-                wallet: walletAddress,
-                name: updatedData.name || user.name,
-                bio: updatedData.bio || user.bio,
-                image: updatedData.avatar || user.avatar,
-                genre: updatedData.category || user.category,
-                stakingPower:
-                  updatedData.stakingPower || user.stakingPower || 0,
-              }),
-            });
-          }
-
-          if (!artistSaveResponse.ok) {
-            throw new Error("Failed to save artist profile");
-          }
-
-          const updatedArtist = await artistSaveResponse.json();
-          updatedData.totalTipsReceived =
-            updatedArtist.totalTips || user.totalTipsReceived;
-        }
-
-        const updatedUser = await userResponse.json();
-        setUser((prev) => ({
-          ...prev!,
-          ...updatedData,
-          ...updatedUser,
-        }));
-
-        if (updatedData.isArtist !== undefined) {
-          setIsArtist(updatedData.isArtist);
-        }
-
-        toast.success("Profile updated successfully");
-      } catch (error) {
-        console.error("Error updating profile:", error);
-        toast.error("Failed to update profile");
-      } finally {
-        setLoading(false);
+      if (!userResponse.ok) {
+        throw new Error("Failed to update user data");
       }
-    },
-    [user, walletAddress]
-  );
 
-  // Toggle artist profile
+      // Handle artist profile if isArtist is true
+      if (updatedData.isArtist) {
+        const artistResponse = await fetch(`/api/artist?wallet=${walletAddress}`);
+        const existingArtist = artistResponse.ok ? await artistResponse.json() : null;
+
+        let artistSaveResponse;
+        if (existingArtist?.id) {
+          // Update existing artist profile
+          artistSaveResponse = await fetch("/api/artist", {
+            method: "PUT",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              id: existingArtist.id,
+              wallet: walletAddress,
+              name: updatedData.name || user.name,
+              bio: updatedData.bio || user.bio,
+              image: updatedData.avatar || user.avatar,
+              genre: updatedData.category || user.category,
+              stakingPower: updatedData.stakingPower || user.stakingPower,
+            }),
+          });
+        } else {
+          // Create new artist profile
+          artistSaveResponse = await fetch("/api/artist", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              wallet: walletAddress,
+              name: updatedData.name || user.name,
+              bio: updatedData.bio || user.bio,
+              image: updatedData.avatar || user.avatar,
+              genre: updatedData.category || user.category,
+              stakingPower: updatedData.stakingPower || user.stakingPower || 0,
+            }),
+          });
+        }
+
+        if (!artistSaveResponse.ok) {
+          throw new Error("Failed to save artist profile");
+        }
+
+        const updatedArtist = await artistSaveResponse.json();
+        updatedData.totalTipsReceived = updatedArtist.totalTips || user.totalTipsReceived;
+      }
+
+      const updatedUser = await userResponse.json();
+      setUser((prev) => ({
+        ...prev!,
+        ...updatedData,
+        ...updatedUser,
+      }));
+
+      if (updatedData.isArtist !== undefined) {
+        setIsArtist(updatedData.isArtist);
+      }
+
+      toast.success("Profile updated successfully");
+    } catch (error) {
+      handleError(error, "Failed to update profile");
+    } finally {
+      setLoading(false);
+    }
+  }, [user, walletAddress, handleError]);
+
+  // Toggle artist profile function
   const toggleArtistProfile = useCallback(async () => {
     if (!user) return;
 
@@ -456,7 +454,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       setLoading(true);
 
       if (isArtist) {
-        // Option to disable artist profile (or delete if needed)
+        // Disable artist profile
         setIsArtist(false);
         await updateProfile({ isArtist: false });
       } else {
@@ -470,14 +468,13 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
       toast.success(`Artist profile ${isArtist ? "disabled" : "enabled"}`);
     } catch (error) {
-      console.error("Error toggling artist profile:", error);
-      toast.error("Failed to update artist status");
+      handleError(error, "Failed to update artist status");
     } finally {
       setLoading(false);
     }
-  }, [isArtist, updateProfile, user]);
+  }, [isArtist, updateProfile, user, handleError]);
 
-  // Update settings
+  // Settings update function
   const updateSettings = useCallback(
     (section: keyof UserSettings, key: string, value: boolean) => {
       setSettings((prev) => ({
@@ -492,11 +489,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     []
   );
 
-  // Refresh user data
-  const refreshUser = useCallback(async () => {
-    await fetchUserData();
-  }, [fetchUserData]);
-
+  // Check registration status function
   const checkRegistration = useCallback(async (): Promise<boolean> => {
     if (!walletAddress) return false;
 
@@ -507,48 +500,43 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       const userData = await response.json();
       return !!userData;
     } catch (error) {
-      console.error("Registration check error:", error);
+      handleError(error, "Registration check error");
       return false;
     }
-  }, [walletAddress]);
+  }, [walletAddress, handleError]);
 
+  // Redirect to registration function
   const redirectToRegistration = useCallback(() => {
     router.push("/user/registration");
   }, [router]);
 
+  // Get user profile by ID function
   const getUserProfile = useCallback(
-    async (walletAddress: string): Promise<UserProfile | null> => {
+    async (userId: string): Promise<UserProfile | null> => {
       try {
         setLoading(true);
 
-        // Fetch user data by wallet address
-        const userResponse = await fetch(`/api/users?wallet=${walletAddress}`);
+        // Fetch user and artist data in parallel
+        const [userResponse, artistResponse] = await Promise.all([
+          fetch(`/api/users?wallet=${userId}`),
+          fetch(`/api/artist?wallet=${userId}`),
+        ]);
+
         if (!userResponse.ok) {
           throw new Error("User not found");
         }
+
         const userData = await userResponse.json();
+        const artistData = artistResponse.ok ? await artistResponse.json() : null;
 
-        // Fetch artist data if available
-        let artistData = null;
-        try {
-          const artistResponse = await fetch(
-            `/api/artist?wallet=${walletAddress}`
-          );
-          if (artistResponse.ok) {
-            artistData = await artistResponse.json();
-          }
-        } catch (error) {
-          console.error("Error fetching artist data:", error);
-        }
-
-        // Merge all data into a complete profile
+        // Construct complete profile
         const completeProfile: UserProfile = {
           ...defaultProfile,
           ...userData,
-          id: walletAddress,
-          wallet: walletAddress,
-          name: userData.name || `User${walletAddress.slice(0, 6)}`,
-          username: userData.username || `@user${walletAddress.slice(0, 6)}`,
+          id: userId,
+          wallet: userId,
+          name: userData.name || `User${userId.slice(0, 6)}`,
+          username: userData.username || `@user${userId.slice(0, 6)}`,
           avatar: userData.avatar || "",
           bio: userData.bio || "",
           location: userData.location || "",
@@ -577,63 +565,84 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
         return completeProfile;
       } catch (error) {
-        console.error("Error fetching user profile:", error);
-        toast.error("Failed to load profile");
+        handleError(error, "Failed to load profile");
         return null;
       } finally {
         setLoading(false);
       }
     },
-    []
+    [handleError]
   );
 
-   const fetchUserActivitybyId = useCallback(async (userId:string) => {
-    try {
-      setActivityLoading(true);
-      const response = await fetch(
-        `/api/users/activity?wallet=${userId}`
-      );
+  // Effect for initial data loading with cleanup
+  useEffect(() => {
+    const controller = new AbortController();
+    fetchUserData();
+    return () => controller.abort();
+  }, [fetchUserData]);
 
-      if (!response.ok) {
-        throw new Error("Failed to fetch activity data");
-      }
-      const data = await response.json();
-     return data.activity
-    } catch (error) {
-      console.error("Error fetching user activity:", error);
-      toast.error("Failed to load activity data");
-    } finally {
+  // Effect for activity loading with cleanup
+  useEffect(() => {
+    const controller = new AbortController();
+    if (walletAddress && authenticated) {
+      fetchUserActivity(controller.signal);
+    } else {
+      setActivity(null);
     }
-  }, []);
+    return () => controller.abort();
+  }, [walletAddress, authenticated, fetchUserActivity]);
 
+  // Memoize the context value to prevent unnecessary re-renders
+  const contextValue = useMemo(() => ({
+    user,
+    settings,
+    loading,
+    isAuthenticated: authenticated,
+    isRegistered,
+    isArtist,
+    connectWallet,
+    disconnectWallet,
+    registerUser,
+    updateProfile,
+    updateSettings,
+    toggleArtistProfile,
+    refreshUser: fetchUserData,
+    checkRegistration,
+    redirectToRegistration,
+    walletAddress,
+    getUserProfile,
+    activity,
+    activityLoading,
+    fetchUserActivity: () => fetchUserActivity(),
+    refreshActivity,
+    fetchUserActivitybyId,
+  }), [
+    user,
+    settings,
+    loading,
+    authenticated,
+    isRegistered,
+    isArtist,
+    connectWallet,
+    disconnectWallet,
+    registerUser,
+    updateProfile,
+    updateSettings,
+    toggleArtistProfile,
+    fetchUserData,
+    checkRegistration,
+    redirectToRegistration,
+    walletAddress,
+    getUserProfile,
+    activity,
+    activityLoading,
+    fetchUserActivity,
+    refreshActivity,
+    fetchUserActivitybyId,
+  ]);
 
   return (
-    <UserContext.Provider
-      value={{
-        user,
-        settings,
-        loading,
-        isAuthenticated: authenticated,
-        isRegistered,
-        isArtist,
-        connectWallet,
-        disconnectWallet,
-        registerUser,
-        updateProfile,
-        updateSettings,
-        toggleArtistProfile,
-        refreshUser,
-        checkRegistration,
-        redirectToRegistration,
-        walletAddress,
-        getUserProfile,
-        activity,
-        activityLoading,
-        fetchUserActivity,
-        refreshActivity,
-        fetchUserActivitybyId
-      }}
-    >
+    <UserContext.Provider value={contextValue}>
       {children}
     </UserContext.Provider>
   );
