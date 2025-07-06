@@ -69,7 +69,9 @@ export async function POST(request: Request) {
     wallet,
     stakingPower = 0,
     reputation = 0,
-    tier = 'CYBER_NOVICE'
+    tier = 'CYBER_NOVICE',
+    following=0,
+    followers=0,
   } = await request.json();
 
   // Validate required fields
@@ -89,8 +91,6 @@ export async function POST(request: Request) {
       reputation,
       tier,
       // Default values for required fields
-      following: [],
-      followers: [],
       totalTipsGiven: 0,
       totalCommentsPosted: 0,
       dailyMissionsCompleted: 0,
