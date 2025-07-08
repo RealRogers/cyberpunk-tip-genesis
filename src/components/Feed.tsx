@@ -1,17 +1,17 @@
 //@ts-nocheck
 // components/Feed.tsx
-"use client"
+"use client";
 import { useState, useMemo, useCallback } from "react";
 import { motion } from "framer-motion";
 import { Heart, MessageSquare, Zap, Activity, Gift } from "lucide-react";
-import { Toaster, toast } from 'react-hot-toast';
+import { Toaster, toast } from "react-hot-toast";
 import { useFeeds } from "../app/providers/FeedProvider";
-import { usePrivy, useWallets } from '@privy-io/react-auth';
-import { useRouter } from 'next/navigation';
-import CommentsSection from './CommentSection'
+import { usePrivy, useWallets } from "@privy-io/react-auth";
+import { useRouter } from "next/navigation";
+import CommentsSection from "./CommentSection";
+import TipButton from "./TipButton";
 
-
-type FeedType = 'all' | 'content' | 'activity' | 'donations';
+type FeedType = "all" | "content" | "activity" | "donations";
 
 interface FeedItem {
   id: string;
@@ -44,28 +44,29 @@ interface FeedItem {
 export default function Feed() {
   const { ready, authenticated } = usePrivy();
   const { wallets } = useWallets();
-  const { feeds, loading, hasMore, fetchMore, handleLike, isProcessingLike } = useFeeds();
-  const [expandedPost, setExpandedPost] = useState<string | null>(null)
-  const router = useRouter()
+  const { feeds, loading, hasMore, fetchMore, handleLike, isProcessingLike } =
+    useFeeds();
+  const [expandedPost, setExpandedPost] = useState<string | null>(null);
+  const router = useRouter();
 
   const handleExpandPost = (postId: string) => {
-    setExpandedPost(expandedPost === postId ? null : postId)
-  }
+    setExpandedPost(expandedPost === postId ? null : postId);
+  };
 
   const handleViewDetails = (postId: string) => {
-    router.push(`/content/${postId}`)
-  }
-  
-  const [activeTab, setActiveTab] = useState<FeedType>('all');
+    router.push(`/content/${postId}`);
+  };
+
+  const [activeTab, setActiveTab] = useState<FeedType>("all");
   const [glowPosition, setGlowPosition] = useState({ x: 0, y: 0 });
 
   const walletAddress = useMemo(() => wallets?.[0]?.address || null, [wallets]);
 
   const currentFeedItems = useMemo(() => {
     if (!feeds[activeTab]?.length) return [];
-    
+
     return feeds[activeTab].filter(
-      (item, index, self) => self.findIndex(i => i.id === item.id) === index
+      (item, index, self) => self.findIndex((i) => i.id === item.id) === index
     );
   }, [feeds, activeTab]);
 
@@ -73,205 +74,239 @@ export default function Feed() {
     const rect = e.currentTarget.getBoundingClientRect();
     setGlowPosition({
       x: e.clientX - rect.left,
-      y: e.clientY - rect.top
+      y: e.clientY - rect.top,
     });
   }, []);
 
-  const handleProfileClick = useCallback((userId: string) => {
-    router.push(`/profile/${userId}`);
-  }, [router]);
+  const handleProfileClick = useCallback(
+    (userId: string) => {
+      router.push(`/profile/${userId}`);
+    },
+    [router]
+  );
 
-  const handleTabChange = useCallback((tab: FeedType) => {
-    setActiveTab(tab);
-    if (feeds[tab]?.length === 0) {
-      fetchMore(tab);
-    }
-  }, [feeds, fetchMore]);
+  const handleTabChange = useCallback(
+    (tab: FeedType) => {
+      setActiveTab(tab);
+      if (feeds[tab]?.length === 0) {
+        fetchMore(tab);
+      }
+    },
+    [feeds, fetchMore]
+  );
 
-  const handleLikeClick = useCallback((itemId: string) => {
-    if (!authenticated) {
-      toast.error('Connect your wallet to like posts');
-      return;
-    }
-    handleLike(itemId);
-  }, [authenticated, handleLike]);
+  const handleLikeClick = useCallback(
+    (itemId: string) => {
+      if (!authenticated) {
+        toast.error("Connect your wallet to like posts");
+        return;
+      }
+      handleLike(itemId);
+    },
+    [authenticated, handleLike]
+  );
 
-const renderItem = useCallback((item: FeedItem) => {
-  const user = item.data.user || item.data.donor || item.data.author || { 
-    id: '', 
-    username: 'User', 
-    avatar: null 
-  };
+  const renderItem = useCallback(
+    (item: FeedItem) => {
+      const user = item.data.user ||
+        item.data.donor ||
+        item.data.author || {
+          id: "",
+          username: "User",
+          avatar: null,
+        };
+        //console.log("feed item",item)
+      const isLiked =
+        walletAddress &&
+        item.data.likes?.some((like) => like.userId === walletAddress);
+      const likeCount = item.data.likes?.length || 0;
+      const commentCount = item.data.comments?.length || 0;
+      const isProcessing = isProcessingLike[item.id];
+      const isExpanded = expandedPost === item.id;
 
-  const isLiked = walletAddress && item.data.likes?.some((like) => like.userId === walletAddress);
-  const likeCount = item.data.likes?.length || 0;
-  const commentCount = item.data.comments?.length || 0;
-  const isProcessing = isProcessingLike[item.id];
-  const isExpanded = expandedPost === item.id;
+      return (
+        <motion.div
+          key={`${item.type}-${item.id}`}
+          className="relative overflow-hidden"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4 }}
+        >
+          <div
+            className="absolute inset-0 pointer-events-none"
+            style={{
+              background: `radial-gradient(600px at ${glowPosition.x}px ${glowPosition.y}px, rgba(100, 255, 255, 0.1), transparent 80%)`,
+            }}
+          />
 
-  return (
-    <motion.div 
-      key={`${item.type}-${item.id}`}
-      className="relative overflow-hidden"
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4 }}
-    >
-      <div 
-        className="absolute inset-0 pointer-events-none"
-        style={{
-          background: `radial-gradient(600px at ${glowPosition.x}px ${glowPosition.y}px, rgba(100, 255, 255, 0.1), transparent 80%)`
-        }}
-      />
-      
-      <div 
-        className="border border-cyan-400/20 bg-gray-900/80 backdrop-blur-sm p-6 mb-4 
+          <div
+            className="border border-cyan-400/20 bg-gray-900/80 backdrop-blur-sm p-6 mb-4 
                   relative z-10 hover:border-cyan-400/40 transition-all duration-300
                   shadow-lg shadow-cyan-500/10 hover:shadow-cyan-500/20"
-        onMouseMove={handleMouseMove}
-      >
-        <div className="flex items-start gap-4">
-          <div className="relative">
-            <div className="absolute inset-0 rounded-full bg-cyan-400 blur-md opacity-20 animate-pulse" />
-            {user.avatar ? (
-              <img 
-                onClick={() => handleProfileClick(user.id)}
-                src={user.avatar} 
-                alt={user.username} 
-                className="w-12 h-12 rounded-full relative z-10 border border-cyan-400/30 cursor-pointer"
-              />
-            ) : (
-              <div
-                onClick={() => handleProfileClick(user.id)}
-                className="w-12 h-12 rounded-full bg-gradient-to-br from-cyan-400/20 to-pink-400/20 flex items-center justify-center relative z-10 border border-cyan-400/30 cursor-pointer"
-              >
-                {user.username?.[0]?.toUpperCase() || 'U'}
-              </div>
-            )}
-          </div>
-
-          <div className="flex-1">
-            <div className="flex items-center mb-2">
-              <span
-                onClick={() => handleProfileClick(user.id)}
-                className="font-bold text-cyan-100 tracking-wide cursor-pointer hover:text-cyan-300 transition-colors"
-              >
-                {user.username}
-              </span>
-              <span className="text-xs text-cyan-400 ml-auto font-mono">
-                {new Date(item.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-              </span>
-            </div>
-
-            {item.type === 'post' && (
-              <div className="mb-3">
-                <h3 className="text-lg font-medium text-cyan-50 mb-1">{item.data.title}</h3>
-                {item.data.content && (
-                  <p className={`text-cyan-100 text-sm ${!isExpanded ? 'line-clamp-2' : ''}`}>
-                    {item.data.content}
-                  </p>
-                )}
-              </div>
-            )}
-
-            <div className="flex items-start gap-2 mb-2">
-              <span className="text-cyan-400 mt-0.5">
-                {item.type === 'tip' ? (
-                  <Gift className="h-5 w-5" />
-                ) : item.type === 'activity' ? (
-                  <Activity className="h-5 w-5" />
-                ) : (
-                  <Zap className="h-5 w-5" />
-                )}
-              </span>
-              <p className="text-cyan-100 text-sm">
-                {item.data.message || item.data.content || 'New activity'}
-              </p>
-            </div>
-
-            <div className="flex items-center gap-4 mt-3">
-              <button 
-                onClick={() => handleLikeClick(item.id)}
-                disabled={isProcessing}
-                className={`flex items-center gap-1 text-xs font-mono tracking-wider ${
-                  isLiked ? 'text-pink-400' : 'text-cyan-400 hover:text-cyan-300'
-                } ${isProcessing ? 'opacity-50 cursor-not-allowed' : ''}`}
-              >
-                <Heart className="h-4 w-4" fill={isLiked ? 'currentColor' : 'none'} />
-                <span>[{likeCount}]</span>
-              </button>
-              
-              {item.type === 'post' && (
-                <button 
-                  onClick={() => handleExpandPost(item.id)}
-                  className="flex items-center gap-1 text-xs font-mono tracking-wider text-cyan-400 hover:text-cyan-300"
-                >
-                  <MessageSquare className="h-4 w-4" />
-                  <span>[{commentCount}]</span>
-                </button>
-              )}
-
-              {item.type === 'post' && (
-                <button
-                  onClick={() => handleViewDetails(item.id)}
-                  className="text-xs font-mono tracking-wider text-cyan-400 hover:text-cyan-300 ml-auto"
-                >
-                  View Full
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Expanded content section */}
-        {isExpanded && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            transition={{ duration: 0.3 }}
-            className="mt-4 pt-4 border-t border-cyan-400/10"
+            onMouseMove={handleMouseMove}
           >
-            {item.data.mediaUrl && (
-              <div className="mb-4 rounded-lg overflow-hidden">
-                {item.data.mediaType === 'IMAGE' && (
-                  <img 
-                    src={item.data.mediaUrl} 
-                    alt={item.data.title} 
-                    className="w-full max-h-96 object-contain"
+            <div className="flex items-start gap-4">
+              <div className="relative">
+                <div className="absolute inset-0 rounded-full bg-cyan-400 blur-md opacity-20 animate-pulse" />
+                {user.avatar ? (
+                  <img
+                    onClick={() => handleProfileClick(user.id)}
+                    src={user.avatar}
+                    alt={user.username}
+                    className="w-12 h-12 rounded-full relative z-10 border border-cyan-400/30 cursor-pointer"
                   />
-                )}
-                {item.data.mediaType === 'VIDEO' && (
-                  <video 
-                    src={item.data.mediaUrl} 
-                    controls 
-                    className="w-full max-h-96"
-                  />
+                ) : (
+                  <div
+                    onClick={() => handleProfileClick(user.id)}
+                    className="w-12 h-12 rounded-full bg-gradient-to-br from-cyan-400/20 to-pink-400/20 flex items-center justify-center relative z-10 border border-cyan-400/30 cursor-pointer"
+                  >
+                    {user.username?.[0]?.toUpperCase() || "U"}
+                  </div>
                 )}
               </div>
+
+              <div className="flex-1">
+                <div className="flex items-center mb-2">
+                  <span
+                    onClick={() => handleProfileClick(user.id)}
+                    className="font-bold text-cyan-100 tracking-wide cursor-pointer hover:text-cyan-300 transition-colors"
+                  >
+                    {user.username}
+                  </span>
+                  <span className="text-xs text-cyan-400 ml-auto font-mono">
+                    {new Date(item.createdAt).toLocaleTimeString([], {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </span>
+                </div>
+
+                {item.type === "post" && (
+                  <div className="mb-3">
+                    <h3 className="text-lg font-medium text-cyan-50 mb-1">
+                      {item.data.title}
+                    </h3>
+                    {item.data.content && (
+                      <p
+                        className={`text-cyan-100 text-sm ${
+                          !isExpanded ? "line-clamp-2" : ""
+                        }`}
+                      >
+                        {item.data.content}
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                <div className="flex items-start gap-2 mb-2">
+                  <span className="text-cyan-400 mt-0.5">
+                    {item.type === "tip" ? (
+                      <Gift className="h-5 w-5" />
+                    ) : item.type === "activity" ? (
+                      <Activity className="h-5 w-5" />
+                    ) : (
+                      <Zap className="h-5 w-5" />
+                    )}
+                  </span>
+                  <p className="text-cyan-100 text-sm">
+                    {item.data.message || item.data.content || "New activity"}
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-4 mt-3">
+                  <button
+                    onClick={() => handleLikeClick(item.id)}
+                    disabled={isProcessing}
+                    className={`flex items-center gap-1 text-xs font-mono tracking-wider ${
+                      isLiked
+                        ? "text-pink-400"
+                        : "text-cyan-400 hover:text-cyan-300"
+                    } ${isProcessing ? "opacity-50 cursor-not-allowed" : ""}`}
+                  >
+                    <Heart
+                      className="h-4 w-4"
+                      fill={isLiked ? "currentColor" : "none"}
+                    />
+                    <span>[{likeCount}]</span>
+                  </button>
+                  {item.type === "post" && (
+                    <button
+                      onClick={() => handleExpandPost(item.id)}
+                      className="flex items-center gap-1 text-xs font-mono tracking-wider text-cyan-400 hover:text-cyan-300"
+                    >
+                      <MessageSquare className="h-4 w-4" />
+                      <span>[{commentCount}]</span>
+                    </button>
+                  )}
+                  {item.type === "post" && (
+                    <button
+                      onClick={() => handleViewDetails(item.id)}
+                      className="text-xs font-mono tracking-wider text-cyan-400 hover:text-cyan-300 ml-auto"
+                    >
+                      View Full
+                    </button>
+                  )}
+               
+                  <TipButton
+                    recipientId={item.data?.authorId || ""}
+                    recipientWallet={item.data.authorId|| ""}
+                    postId={item.type === "post" ? item.id : undefined}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Expanded content section */}
+            {isExpanded && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                transition={{ duration: 0.3 }}
+                className="mt-4 pt-4 border-t border-cyan-400/10"
+              >
+                {item.data.mediaUrl && (
+                  <div className="mb-4 rounded-lg overflow-hidden">
+                    {item.data.mediaType === "IMAGE" && (
+                      <img
+                        src={item.data.mediaUrl}
+                        alt={item.data.title}
+                        className="w-full max-h-96 object-contain"
+                      />
+                    )}
+                    {item.data.mediaType === "VIDEO" && (
+                      <video
+                        src={item.data.mediaUrl}
+                        controls
+                        className="w-full max-h-96"
+                      />
+                    )}
+                  </div>
+                )}
+
+                <CommentsSection
+                  postId={item.id}
+                  initialComments={item.data.comments || []}
+                />
+              </motion.div>
             )}
 
-            <CommentsSection 
-              postId={item.id} 
-              initialComments={item.data.comments || []}
-            />
-          </motion.div>
-        )}
-
-        <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-cyan-400/0 via-cyan-400/80 to-cyan-400/0" />
-      </div>
-    </motion.div>
+            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-cyan-400/0 via-cyan-400/80 to-cyan-400/0" />
+          </div>
+        </motion.div>
+      );
+    },
+    [
+      glowPosition,
+      handleMouseMove,
+      handleProfileClick,
+      handleLikeClick,
+      handleExpandPost,
+      handleViewDetails,
+      isProcessingLike,
+      walletAddress,
+      expandedPost,
+    ]
   );
-}, [
-  glowPosition, 
-  handleMouseMove, 
-  handleProfileClick, 
-  handleLikeClick, 
-  handleExpandPost,
-  handleViewDetails,
-  isProcessingLike, 
-  walletAddress,
-  expandedPost
-]);
 
   if (!ready) return <LoadingView />;
   if (!authenticated) return <AuthRequiredView />;
@@ -282,21 +317,24 @@ const renderItem = useCallback((item: FeedItem) => {
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-cyan-500/10 to-transparent" />
       </div>
 
-      <Toaster position="top-center" toastOptions={{ 
-        duration: 3000,
-        style: {
-          background: 'rgba(17, 24, 39, 0.9)',
-          border: '1px solid rgba(34, 211, 238, 0.2)',
-          color: '#e5e7eb',
-          backdropFilter: 'blur(10px)',
-          padding: '12px 16px',
-          borderRadius: '4px',
-          boxShadow: '0 0 20px rgba(34, 211, 238, 0.1)'
-        }
-      }} />
-      
+      <Toaster
+        position="top-center"
+        toastOptions={{
+          duration: 3000,
+          style: {
+            background: "rgba(17, 24, 39, 0.9)",
+            border: "1px solid rgba(34, 211, 238, 0.2)",
+            color: "#e5e7eb",
+            backdropFilter: "blur(10px)",
+            padding: "12px 16px",
+            borderRadius: "4px",
+            boxShadow: "0 0 20px rgba(34, 211, 238, 0.1)",
+          },
+        }}
+      />
+
       <div className="max-w-2xl mx-auto px-4 py-8 relative z-10">
-        <motion.h1 
+        <motion.h1
           className="text-4xl font-bold mb-8 text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-pink-400 tracking-tight"
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -304,45 +342,48 @@ const renderItem = useCallback((item: FeedItem) => {
         >
           NEURAL_FEED
         </motion.h1>
-        
+
         <div className="flex border-b border-cyan-400/20 mb-6 relative">
           <motion.div
             layoutId="tabIndicator"
             className="absolute bottom-0 h-0.5 bg-cyan-400"
-            style={{ 
+            style={{
               width: `${100 / 4}%`,
-              left: `${['all', 'content', 'donations', 'activity'].indexOf(activeTab) * (100 / 4)}%`
+              left: `${
+                ["all", "content", "donations", "activity"].indexOf(activeTab) *
+                (100 / 4)
+              }%`,
             }}
-            transition={{ type: 'spring', bounce: 0.2, duration: 0.6 }}
+            transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
           />
-          
-          {(['all', 'content', 'donations', 'activity'] as FeedType[]).map((tab) => (
-            <button
-              key={tab}
-              onClick={() => handleTabChange(tab)}
-              className={`px-4 py-3 text-sm font-medium relative uppercase tracking-wider ${
-                activeTab === tab
-                  ? 'text-cyan-400'
-                  : 'text-gray-400 hover:text-cyan-300'
-              }`}
-            >
-              {tab}
-            </button>
-          ))}
-        </div>
-        
-        <div className="space-y-6">
-          {currentFeedItems.length > 0 ? (
-            currentFeedItems.map(renderItem)
-          ) : (
-            !loading && <EmptyFeedView />
+
+          {(["all", "content", "donations", "activity"] as FeedType[]).map(
+            (tab) => (
+              <button
+                key={tab}
+                onClick={() => handleTabChange(tab)}
+                className={`px-4 py-3 text-sm font-medium relative uppercase tracking-wider ${
+                  activeTab === tab
+                    ? "text-cyan-400"
+                    : "text-gray-400 hover:text-cyan-300"
+                }`}
+              >
+                {tab}
+              </button>
+            )
           )}
         </div>
 
+        <div className="space-y-6">
+          {currentFeedItems.length > 0
+            ? currentFeedItems.map(renderItem)
+            : !loading && <EmptyFeedView />}
+        </div>
+
         {hasMore[activeTab] && (
-          <LoadMoreButton 
-            loading={loading} 
-            onClick={() => fetchMore(activeTab)} 
+          <LoadMoreButton
+            loading={loading}
+            onClick={() => fetchMore(activeTab)}
           />
         )}
       </div>
@@ -353,8 +394,12 @@ const renderItem = useCallback((item: FeedItem) => {
 const LoadingView = () => (
   <div className="min-h-screen bg-gray-950 flex items-center justify-center">
     <div className="text-center">
-      <div className="animate-pulse text-cyan-400 text-lg mb-2">INITIALIZING NEURAL INTERFACE</div>
-      <div className="text-xs text-cyan-400/60 font-mono tracking-wider">CONNECTING TO PRIVY NETWORK...</div>
+      <div className="animate-pulse text-cyan-400 text-lg mb-2">
+        INITIALIZING NEURAL INTERFACE
+      </div>
+      <div className="text-xs text-cyan-400/60 font-mono tracking-wider">
+        CONNECTING TO PRIVY NETWORK...
+      </div>
     </div>
   </div>
 );
@@ -363,7 +408,9 @@ const AuthRequiredView = () => (
   <div className="min-h-screen bg-gray-950 flex items-center justify-center">
     <div className="text-center">
       <div className="text-cyan-400 text-lg mb-2">AUTHENTICATION REQUIRED</div>
-      <div className="text-xs text-cyan-400/60 font-mono tracking-wider">PLEASE CONNECT YOUR WALLET TO ACCESS FEED</div>
+      <div className="text-xs text-cyan-400/60 font-mono tracking-wider">
+        PLEASE CONNECT YOUR WALLET TO ACCESS FEED
+      </div>
     </div>
   </div>
 );
@@ -375,7 +422,9 @@ const EmptyFeedView = () => (
     animate={{ opacity: 1 }}
   >
     <div className="text-lg mb-2">NO ACTIVITY DETECTED</div>
-    <div className="text-xs font-mono tracking-wider">SYSTEM AWAITING INPUT</div>
+    <div className="text-xs font-mono tracking-wider">
+      SYSTEM AWAITING INPUT
+    </div>
   </motion.div>
 );
 
@@ -390,7 +439,7 @@ const LoadMoreButton = ({ loading, onClick }: LoadMoreButtonProps) => (
     disabled={loading}
     className={`mt-8 w-full py-3 text-sm flex items-center justify-center gap-2
               border border-cyan-400/30 hover:border-cyan-400/60
-              ${loading ? 'text-gray-500' : 'text-cyan-400 hover:text-cyan-300'}
+              ${loading ? "text-gray-500" : "text-cyan-400 hover:text-cyan-300"}
               transition-all duration-300 relative overflow-hidden group`}
     whileHover={{ scale: 1.02 }}
     whileTap={{ scale: 0.98 }}

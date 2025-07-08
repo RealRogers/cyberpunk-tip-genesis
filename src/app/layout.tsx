@@ -5,6 +5,8 @@ import "../index.css";
 import { PrivyProvider } from "@privy-io/react-auth";
 import { FeedProvider } from "./providers/FeedProvider";
 import { UserProvider } from "./providers/UserProvider";
+// Replace this with any of the networks listed at https://github.com/wevm/viem/blob/main/src/chains/index.ts
+import {base, berachain, polygon, arbitrum, story, mantle,arbitrumSepolia} from 'viem/chains';
 
 export default function RootLayout({
   children,
@@ -21,6 +23,7 @@ export default function RootLayout({
           appId={appId}
           clientId={clientId}
           config={{
+            defaultChain:arbitrumSepolia,
             embeddedWallets: {
               ethereum: {
                 createOnLogin: "users-without-wallets",
