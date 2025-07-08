@@ -151,6 +151,7 @@ const Index = () => {
         disconnectWallet={disconnectWallet}
         userStakingPower={userStakingPower}
         walletAddress={walletAddress}
+        erc20Contracts={[{contractAddress:"0x82B9e52b26A2954E113F94Ff26647754d5a4247D",symbol:"MXNB",decimal:6}]}
       />
       
       <main className="max-w-7xl mx-auto px-4 py-8 relative z-10">
