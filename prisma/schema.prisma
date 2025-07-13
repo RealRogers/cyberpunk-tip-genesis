@@ -32,6 +32,7 @@ model User {
   createdPosts        ContentPost[] @relation("UserPosts")
   followers  Follow[]  @relation("follower")
   following  Follow[]  @relation("following")
+  issuances           Issuance[] 
 }
 
 model Follow {
@@ -241,7 +242,8 @@ enum FeedType {
   follow
   achievement
   mission
-  post 
+  post
+  deposit  
 }
 
 enum Rarity {
@@ -287,4 +289,22 @@ enum LikeType {
   WOW
   SAD
   ANGRY
+}
+
+model Issuance {
+  id          String   @id @default(uuid())
+  user        User     @relation(fields: [userId], references: [id])
+  userId      String
+  amount      Float    // Amount in MXN
+  mxnbAmount  Float    // Amount in MXNB (1:1 peg)
+  status      String   // e.g., "pending", "completed", "failed"
+  issuanceId  String   // Juno API issuance ID
+  externalId  String?  // Optional unique identifier
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  destinationAddress String // Blockchain address receiving MXNB
+  withdrawalTxHash    String?   // NEW: Blockchain transaction hash
+  withdrawalStatus    String?   // NEW: "pending", "processing", "completed", "failed"
+  processedAt         DateTime? // NEW: When withdrawal was processed
+  metadata            Json?     // NEW: For flexible additional data
 }

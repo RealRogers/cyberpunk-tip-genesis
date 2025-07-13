@@ -6,7 +6,7 @@ import { Zap, X } from "lucide-react";
 import { useWallets } from "@privy-io/react-auth";
 import { ethers } from "ethers";
 import { toast } from "react-hot-toast";
-import ModalPortal from "./ModalPortal"; // ✅ Import the portal
+import ModalPortal from "./ModalPortal";
 
 interface TipButtonProps {
   recipientId: string;
@@ -19,6 +19,7 @@ export default function TipButton({ recipientId, recipientWallet, postId }: TipB
   const [amount, setAmount] = useState("");
   const [message, setMessage] = useState("");
   const [selectedToken] = useState("MXNB");
+  const [loading, setLoading] = useState(false);
   const { wallets } = useWallets();
   const wallet = wallets[0];
 
@@ -26,25 +27,60 @@ export default function TipButton({ recipientId, recipientWallet, postId }: TipB
     { address: "0x82B9e52b26A2954E113F94Ff26647754d5a4247D", symbol: "MXNB", decimal: 6 },
   ];
 
-  const handleTip = async () => {
+  const checkArtistWallet = async () => {
+    try {
+      const response = await fetch('/api/artist/check-wallet', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ wallet: recipientWallet }),
+      });
+      
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error('Error checking wallet:', error);
+      return { exists: false, error: 'Failed to check wallet' };
+    }
+  };
+
+  const handleOpenModal = async () => {
     if (!wallet?.address) {
       toast.error("Connect your wallet to send tips");
       return;
     }
 
+    setLoading(true);
+    try {
+      const walletCheck = await checkArtistWallet();
+      
+      if (!walletCheck.exists) {
+        toast.error("This wallet is not registered as an artist. The recipient needs to register as an artist to receive tips.");
+        return;
+      }
+
+      setIsOpen(true);
+    } catch (error) {
+      console.error('Error checking artist wallet:', error);
+      toast.error("Failed to verify artist wallet");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleTip = async () => {
     if (!amount || isNaN(parseFloat(amount))) {
       toast.error("Enter a valid amount");
       return;
     }
 
+    setLoading(true);
     try {
       const provider = new ethers.providers.Web3Provider(await wallet.getEthereumProvider());
       const signer = provider.getSigner();
 
       const token = tokenOptions.find((t) => t.symbol === selectedToken);
       if (!token) throw new Error("Invalid token selected");
-        console.log("token",token.address)
-        console.log("recipient",recipientWallet)
+
       const erc20 = new ethers.Contract(
         token.address,
         ["function transfer(address to, uint256 amount) returns (bool)"],
@@ -54,14 +90,12 @@ export default function TipButton({ recipientId, recipientWallet, postId }: TipB
       const decimals = token.decimal;
       const tx = await erc20.transfer(
         recipientWallet,
-        ethers.utils.parseUnits("1", decimals)
+        ethers.utils.parseUnits(amount, decimals)
       );
 
       const response = await fetch("/api/donations", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           recipientId,
           recipientWallet,
@@ -83,19 +117,32 @@ export default function TipButton({ recipientId, recipientWallet, postId }: TipB
     } catch (error: any) {
       console.error("Tip failed:", error);
       toast.error(error.message || "Failed to send tip");
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
     <>
       <motion.button
-        onClick={() => setIsOpen(true)}
+        onClick={handleOpenModal}
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
         className="flex items-center gap-1 px-3 py-1.5 bg-gradient-to-r from-cyan-600/20 to-pink-600/20 border border-cyan-400/30 rounded-lg text-xs font-mono text-cyan-400 hover:bg-cyan-600/30 transition-colors"
+        disabled={loading}
       >
-        <Zap className="w-3 h-3" />
-        TIP
+        {loading ? (
+          <motion.div
+            animate={{ rotate: 360 }}
+            transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
+            className="w-3 h-3 border-2 border-cyan-400 border-t-transparent rounded-full"
+          />
+        ) : (
+          <>
+            <Zap className="w-3 h-3" />
+            TIP
+          </>
+        )}
       </motion.button>
 
       <AnimatePresence>
@@ -113,6 +160,7 @@ export default function TipButton({ recipientId, recipientWallet, postId }: TipB
                   <button
                     onClick={() => setIsOpen(false)}
                     className="text-gray-400 hover:text-cyan-400 transition-colors"
+                    disabled={loading}
                   >
                     <X className="w-5 h-5" />
                   </button>
@@ -128,6 +176,7 @@ export default function TipButton({ recipientId, recipientWallet, postId }: TipB
                         onChange={(e) => setAmount(e.target.value)}
                         placeholder="0.00"
                         className="flex-1 bg-transparent px-4 py-3 text-base text-cyan-100 outline-none"
+                        disabled={loading}
                       />
                       <div className="px-3 py-3 bg-gray-800 text-sm font-mono text-cyan-400">
                         MXNB
@@ -143,16 +192,30 @@ export default function TipButton({ recipientId, recipientWallet, postId }: TipB
                       placeholder="Add a supportive message..."
                       className="w-full bg-gray-800/50 border border-cyan-400/20 rounded-lg px-4 py-3 text-sm text-cyan-100 placeholder-cyan-400/50 outline-none resize-none"
                       rows={3}
+                      disabled={loading}
                     />
                   </div>
 
                   <div className="pt-2">
                     <button
                       onClick={handleTip}
-                      className="w-full py-3 bg-gradient-to-r from-cyan-600 to-pink-600 text-sm font-mono font-bold text-white rounded-lg hover:from-cyan-700 hover:to-pink-700 transition-all flex items-center justify-center gap-2"
+                      disabled={loading}
+                      className={`w-full py-3 bg-gradient-to-r from-cyan-600 to-pink-600 text-sm font-mono font-bold text-white rounded-lg transition-all flex items-center justify-center gap-2 ${
+                        loading ? "opacity-60 cursor-not-allowed" : "hover:from-cyan-700 hover:to-pink-700"
+                      }`}
                     >
-                      <Zap className="w-4 h-4" />
-                      CONFIRM TIP
+                      {loading ? (
+                        <motion.div
+                          animate={{ rotate: 360 }}
+                          transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
+                          className="w-4 h-4 border-2 border-white border-t-transparent rounded-full"
+                        />
+                      ) : (
+                        <>
+                          <Zap className="w-4 h-4" />
+                          CONFIRM TIP
+                        </>
+                      )}
                     </button>
                   </div>
                 </div>
