@@ -5,6 +5,7 @@ import "../index.css";
 import { PrivyProvider } from "@privy-io/react-auth";
 import { FeedProvider } from "./providers/FeedProvider";
 import { UserProvider } from "./providers/UserProvider";
+import  {SupabaseStorageProvider} from "./providers/ImageProvider";
 // Replace this with any of the networks listed at https://github.com/wevm/viem/blob/main/src/chains/index.ts
 import {base, berachain, polygon, arbitrum, story, mantle,arbitrumSepolia} from 'viem/chains';
 
@@ -33,7 +34,9 @@ export default function RootLayout({
         >
           <UserProvider>
             <FeedProvider>
+              <SupabaseStorageProvider>
               <Layout>{children}</Layout>
+              </SupabaseStorageProvider>
             </FeedProvider>
           </UserProvider>
         </PrivyProvider>
