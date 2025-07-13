@@ -3,7 +3,7 @@
 import { prisma } from './prisma';
 import { createJunoSignedRequest } from './junoAuth';
 
-let PROCESS_INTERVAL = 5 * 60 * 1000; // 5 minutes
+let PROCESS_INTERVAL = 1 * 60 * 1000; // 5 minutes
 
 class WithdrawalProcessor {
   private intervalId: NodeJS.Timeout | null = null;

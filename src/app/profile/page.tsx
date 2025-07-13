@@ -17,10 +17,12 @@ import {
   LogOut,
   MessageSquare,
   Gift,
-  Activity
+  Activity,
+  X as CloseIcon
 } from "lucide-react";
 import { useUser } from '../providers/UserProvider';
 import { useRouter } from 'next/navigation';
+import { useSupabaseStorage } from '@/app/providers/ImageProvider'; // Adjust path as needed
 
 interface UserSettings {
   notifications: {
@@ -77,6 +79,8 @@ export default function Profile() {
     fetchUserActivity
   } = useUser();
 
+  const { uploadImage, isUploading, uploadError } = useSupabaseStorage();
+
   const [settings, setSettings] = useState<UserSettings>(defaultSettings);
   const [isEditing, setIsEditing] = useState(false);
   const [editedProfile, setEditedProfile] = useState(user || {});
@@ -84,6 +88,12 @@ export default function Profile() {
   const [isArtist, setIsArtist] = useState(user?.isArtist || false);
   const [activeTab, setActiveTab] = useState<ProfileTab>('about');
   const [activeActivityTab, setActiveActivityTab] = useState<ActivityTab>('all');
+
+  // Avatar upload modal
+  const [showAvatarModal, setShowAvatarModal] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const[updateAvatarUrl,setUpdateAvatar] = useState<string | null>(null);
 
   // Initialize form with user data when loaded
   useEffect(() => {
@@ -100,6 +110,15 @@ export default function Profile() {
     }
   }, [activeTab, activity, isAuthenticated, fetchUserActivity]);
 
+  // Clean up preview URL when modal closes
+  useEffect(() => {
+    return () => {
+      if (previewUrl) {
+        URL.revokeObjectURL(previewUrl);
+      }
+    };
+  }, [previewUrl]);
+
   const handleSaveProfile = async () => {
     if (!user?.wallet) {
       toast.error('Wallet not connected');
@@ -112,9 +131,10 @@ export default function Profile() {
     });
 
     try {
-      console.log("ediprofile",editedProfile)
+      console.log("ediprofile", updateAvatarUrl);
       await updateProfile({
         ...editedProfile,
+        avatar:updateAvatarUrl,
         isArtist
       });
       
@@ -134,6 +154,7 @@ export default function Profile() {
   const handleCancelEdit = () => {
     setEditedProfile(user || {});
     setIsEditing(false);
+    setPreviewUrl(null);
   };
 
   const updateSettings = (section: keyof UserSettings, key: string, value: boolean) => {
@@ -154,7 +175,7 @@ export default function Profile() {
   const filterActivities = () => {
     if (!activity) return [];
 
-    let items = [];
+    let items: any[] = [];
     
     if (activeActivityTab === 'all') {
       items = [
@@ -397,6 +418,48 @@ export default function Profile() {
     );
   };
 
+  const handleAvatarClick = () => {
+    setShowAvatarModal(true);
+    if (!isEditing) {
+      setIsEditing(true);
+    }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setSelectedFile(file);
+      setPreviewUrl(URL.createObjectURL(file));
+    }
+  };
+
+  const handleUploadAndClose = async () => {
+    if (!selectedFile) return;
+
+    try {
+      const url = await uploadImage(selectedFile);
+      console.log("url",url)
+      await updateProfile({
+        ...editedProfile,
+        avatar:url,
+        isArtist
+      });
+      toast.success('Image uploaded! Click Save to confirm changes.');
+      setShowAvatarModal(false);
+      setSelectedFile(null);
+      setPreviewUrl(false);
+   
+    } catch (err) {
+      toast.error(uploadError || 'Failed to upload image');
+    }
+  };
+
+  const closeModal = () => {
+    setShowAvatarModal(false);
+    setSelectedFile(null);
+    setPreviewUrl(null);
+  };
+
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen bg-black text-white flex items-center justify-center">
@@ -444,15 +507,22 @@ export default function Profile() {
               {/* Avatar */}
               <div className="relative mb-4 md:mb-0">
                 <div className="h-32 w-32 rounded-full border-4 border-gray-900 bg-gradient-to-br from-cyan-400/20 to-pink-400/20 overflow-hidden">
-                  {user?.avatar ? (
-                    <img src={user.avatar} alt={user.name} className="w-full h-full object-cover" />
+                  {(isEditing ? editedProfile.avatar : user?.avatar) ? (
+                    <img 
+                      src={(isEditing ? editedProfile.avatar : user?.avatar) || ''} 
+                      alt={user?.name || ''} 
+                      className="w-full h-full object-cover" 
+                    />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center text-4xl text-cyan-400">
                       {user?.name?.[0] || 'U'}
                     </div>
                   )}
                 </div>
-                <button className="absolute bottom-0 right-0 rounded-full w-8 h-8 p-0 bg-gray-900 border border-cyan-400/20 flex items-center justify-center">
+                <button 
+                  onClick={handleAvatarClick}
+                  className="absolute bottom-0 right-0 rounded-full w-8 h-8 p-0 bg-gray-900 border border-cyan-400/20 flex items-center justify-center"
+                >
                   <Camera className="h-3 w-3" />
                 </button>
               </div>
@@ -920,6 +990,53 @@ export default function Profile() {
           )}
         </div>
       </main>
+
+      {/* Avatar Upload Modal */}
+      {showAvatarModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
+          <div className="bg-gray-800 rounded-xl p-6 max-w-md w-full border border-cyan-500/30 relative">
+            <button 
+              onClick={closeModal}
+              className="absolute top-2 right-4 text-gray-400 hover:text-white"
+            >
+              <CloseIcon className="h-5 w-5" />
+            </button>
+            <h3 className="text-xl font-bold text-cyan-400 mb-4 flex items-center gap-2">
+              <Camera className="text-2xl" />
+              Upload Profile Picture
+            </h3>
+            <p className="text-gray-300 mb-4">
+              Select an image to upload as your new avatar.
+            </p>
+            <input
+              type="file"
+              accept="image/*"
+              onChange={handleFileChange}
+              className="w-full bg-gray-700 border border-gray-600 text-white rounded-lg block p-2.5 mb-4 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-cyan-500 file:text-white hover:file:bg-cyan-600"
+            />
+            {previewUrl && (
+              <div className="mb-4">
+                <p className="text-sm text-gray-400 mb-2">Preview:</p>
+                <img src={previewUrl} alt="Preview" className="w-32 h-32 rounded-full object-cover mx-auto" />
+              </div>
+            )}
+            {uploadError && (
+              <p className="text-red-400 text-sm mb-4">{uploadError}</p>
+            )}
+            <button
+              onClick={handleUploadAndClose}
+              disabled={!selectedFile || isUploading}
+              className={`w-full flex items-center justify-center gap-3 py-3 px-4 rounded-lg font-medium ${
+                !selectedFile || isUploading
+                  ? 'bg-gray-700 cursor-not-allowed'
+                  : 'bg-gradient-to-r from-cyan-500 to-pink-500 hover:from-cyan-600 hover:to-pink-600'
+              }`}
+            >
+              {isUploading ? 'Uploading...' : 'Upload and Preview'}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

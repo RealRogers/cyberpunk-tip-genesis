@@ -1,11 +1,11 @@
 //@ts-nocheck
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Wallet, Zap, Shield, LogOut, DollarSign } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { ethers } from 'ethers';
 import { usePrivy, useWallets } from '@privy-io/react-auth';
-import DepositForm from './DepositForm'; // Adjust the import path based on your file structure
+import DepositForm from './DepositForm';
 
 interface TokenBalance {
   contract: string;
@@ -23,7 +23,8 @@ interface ERC20Contract {
 interface HeaderProps {
   glitchEffect?: boolean;
   userStakingPower?: number;
-  erc20Contracts?: ERC20Contract[]; // Fixed interface to match usage
+  erc20Contracts?: ERC20Contract[];
+  connectWallet: () => void;
 }
 
 const Header: React.FC<HeaderProps> = ({ 
@@ -38,7 +39,9 @@ const Header: React.FC<HeaderProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [isDepositModalOpen, setIsDepositModalOpen] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
-  
+
+  const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
+
   const { authenticated, user, logout } = usePrivy();
   const { wallets } = useWallets();
   const wallet = wallets[0];
@@ -60,6 +63,19 @@ const Header: React.FC<HeaderProps> = ({
     }
   }, [authenticated, walletAddress]);
 
+  useEffect(() => {
+    const handleOutsideTouch = () => {
+      if (isHovering && window.innerWidth <= 768) {
+        setIsHovering(false);
+      }
+    };
+
+    document.addEventListener('touchstart', handleOutsideTouch);
+    return () => {
+      document.removeEventListener('touchstart', handleOutsideTouch);
+    };
+  }, [isHovering]);
+
   const fetchUserId = async () => {
     try {
       const res = await fetch(`/api/users?wallet=${walletAddress}`);
@@ -70,7 +86,6 @@ const Header: React.FC<HeaderProps> = ({
       setUserId(data.id);
     } catch (error) {
       console.error('Failed to fetch userId:', error);
-      // Optionally, handle error (e.g., show toast or disable deposit)
     }
   };
 
@@ -82,30 +97,15 @@ const Header: React.FC<HeaderProps> = ({
 
     try {
       const privyProvider = await wallet.getEthereumProvider();
-    
       const provider = new ethers.providers.Web3Provider(privyProvider);
-      console.log("provider",provider)
-
       const balanceOfAbi = ['function balanceOf(address) view returns (uint256)'];
 
       const balances = await Promise.all(
-        erc20Contracts.map(async ({contractAddress,symbol,decimal}) => {
+        erc20Contracts.map(async ({contractAddress, symbol, decimal}) => {
           try {
-            // Validate contract address format
-            if (!ethers.utils.isAddress(contractAddress)) {
-              console.warn(`Invalid contract address: ${contractAddress}`);
-              return null;
-            }
-
+            if (!ethers.utils.isAddress(contractAddress)) return null;
             const contract = new ethers.Contract(contractAddress, balanceOfAbi, provider);
-
-            // Use callStatic to simulate safely
-            const balance = await contract.callStatic.balanceOf(walletAddress).catch(() => {
-              console.warn(`Skipping invalid ERC20: ${contractAddress}`);
-              return null;
-            });
-            console.log("balance",ethers.utils.formatUnits(balance, decimal))
-
+            const balance = await contract.callStatic.balanceOf(walletAddress).catch(() => null);
             if (balance === null) return null;
 
             return {
@@ -134,6 +134,30 @@ const Header: React.FC<HeaderProps> = ({
     if (authenticated) {
       router.push('/profile');
     }
+  };
+
+  const handleTouchStart = () => {
+    longPressTimerRef.current = setTimeout(() => {
+      setIsHovering(true);
+    }, 600);
+  };
+
+  const handleTouchEnd = () => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+    }
+
+    if (!isHovering) {
+      handleWalletClick();
+    }
+  };
+
+  const handleMouseEnter = () => {
+    if (window.innerWidth > 768) setIsHovering(true);
+  };
+
+  const handleMouseLeave = () => {
+    if (window.innerWidth > 768) setIsHovering(false);
   };
 
   return (
@@ -194,8 +218,10 @@ const Header: React.FC<HeaderProps> = ({
                 <div className="relative">
                   <motion.button
                     onClick={handleWalletClick}
-                    onMouseEnter={() => setIsHovering(true)}
-                    onMouseLeave={() => setIsHovering(false)}
+                    onTouchStart={handleTouchStart}
+                    onTouchEnd={handleTouchEnd}
+                    onMouseEnter={handleMouseEnter}
+                    onMouseLeave={handleMouseLeave}
                     className="flex items-center space-x-2 bg-gray-900/50 px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg border border-cyan-400/30 hover:bg-gray-800/50 transition-colors"
                     initial={{ scale: 0, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
