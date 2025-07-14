@@ -189,7 +189,7 @@ export default function Feed() {
             }}
           />
 
-          <div
+<div
             className="border border-cyan-400/20 bg-gray-900/80 backdrop-blur-sm p-6 mb-4 
                   relative z-10 hover:border-cyan-400/40 transition-all duration-300
                   shadow-lg shadow-cyan-500/10 hover:shadow-cyan-500/20"
@@ -198,21 +198,22 @@ export default function Feed() {
             <div className="flex items-start gap-4">
               <div className="relative">
                 <div className="absolute inset-0 rounded-full bg-cyan-400 blur-md opacity-20 animate-pulse" />
-                {user.avatar ? (
-                  <img
-                    onClick={() => handleProfileClick(user.id)}
-                    src={user.avatar}
-                    alt={user.username}
-                    className="w-12 h-12 rounded-full relative z-10 border border-cyan-400/30 cursor-pointer"
-                  />
-                ) : (
-                  <div
-                    onClick={() => handleProfileClick(user.id)}
-                    className="w-12 h-12 rounded-full bg-gradient-to-br from-cyan-400/20 to-pink-400/20 flex items-center justify-center relative z-10 border border-cyan-400/30 cursor-pointer"
-                  >
-                    {user.username?.[0]?.toUpperCase() || "U"}
-                  </div>
-                )}
+                <div
+                  onClick={() => handleProfileClick(user.id)}
+                  className="w-12 h-12 rounded-full relative z-10 border border-cyan-400/30 cursor-pointer overflow-hidden"
+                >
+                  {user.avatar ? (
+                    <img
+                      src={user.avatar}
+                      alt={user.username}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-gradient-to-br from-cyan-400/20 to-pink-400/20 flex items-center justify-center">
+                      {user.username?.[0]?.toUpperCase() || "U"}
+                    </div>
+                  )}
+                </div>
               </div>
 
               <div className="flex-1">
