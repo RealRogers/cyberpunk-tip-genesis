@@ -112,9 +112,15 @@ export function FeedProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (ready && authenticated) {
-      fetchInitialFeeds();
+      fetchInitialFeeds(); // initial call
     }
+    const intervalId = setInterval(() => {
+      fetchInitialFeeds();
+    }, 1000); // every 10 seconds
+
+    return () => clearInterval(intervalId); // cleanup
   }, [ready, authenticated]);
+  
 
   const handleLike = async (postId: string) => {
     if (!walletAddress) {

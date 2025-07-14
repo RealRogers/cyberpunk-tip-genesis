@@ -12,6 +12,7 @@ export async function GET(request: Request) {
       const user = await prisma.user.findUnique({
         where: { wallet },
         include: {
+          
           nftRewards: true,
           donations: {
             include: {
@@ -23,7 +24,7 @@ export async function GET(request: Request) {
             orderBy: { timestamp: 'desc' },
             take: 10
           }
-        }
+        },
       });
 
       if (!user) {

@@ -2,16 +2,16 @@
 // components/Feed.tsx
 "use client";
 import { useState, useMemo, useCallback } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { Heart, MessageSquare, Zap, Activity, Gift } from "lucide-react";
 import { Toaster, toast } from "react-hot-toast";
-import { useFeeds } from "../app/providers/FeedProvider";
+import { useFeeds } from "@/app/providers/FeedProvider";
 import { usePrivy, useWallets } from "@privy-io/react-auth";
 import { useRouter } from "next/navigation";
 import CommentsSection from "./CommentSection";
 import TipButton from "./TipButton";
 
-type FeedType = "all" | "content" | "activity" | "donations";
+type FeedType = "content"; // Only keeping the content type
 
 interface FeedItem {
   id: string;
@@ -47,6 +47,8 @@ export default function Feed() {
   const { feeds, loading, hasMore, fetchMore, handleLike, isProcessingLike } =
     useFeeds();
   const [expandedPost, setExpandedPost] = useState<string | null>(null);
+  const [optimisticLikes, setOptimisticLikes] = useState<Record<string, boolean>>({});
+  const [optimisticLikeCounts, setOptimisticLikeCounts] = useState<Record<string, number>>({});
   const router = useRouter();
 
   const handleExpandPost = (postId: string) => {
@@ -57,18 +59,18 @@ export default function Feed() {
     router.push(`/content/${postId}`);
   };
 
-  const [activeTab, setActiveTab] = useState<FeedType>("all");
+  const [activeTab] = useState<FeedType>("content"); // Only content tab
   const [glowPosition, setGlowPosition] = useState({ x: 0, y: 0 });
 
   const walletAddress = useMemo(() => wallets?.[0]?.address || null, [wallets]);
 
   const currentFeedItems = useMemo(() => {
-    if (!feeds[activeTab]?.length) return [];
+    if (!feeds.content?.length) return []; // Only use content feed
 
-    return feeds[activeTab].filter(
+    return feeds.content.filter(
       (item, index, self) => self.findIndex((i) => i.id === item.id) === index
     );
-  }, [feeds, activeTab]);
+  }, [feeds]);
 
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
     const rect = e.currentTarget.getBoundingClientRect();
@@ -85,25 +87,62 @@ export default function Feed() {
     [router]
   );
 
-  const handleTabChange = useCallback(
-    (tab: FeedType) => {
-      setActiveTab(tab);
-      if (feeds[tab]?.length === 0) {
-        fetchMore(tab);
-      }
-    },
-    [feeds, fetchMore]
-  );
-
   const handleLikeClick = useCallback(
-    (itemId: string) => {
+    async (itemId: string) => {
       if (!authenticated) {
         toast.error("Connect your wallet to like posts");
         return;
       }
-      handleLike(itemId);
+      if (!walletAddress) return;
+
+      // Get current like state from the feed item
+      const item = feeds.content?.find(item => item.id === itemId);
+      if (!item) return;
+
+      const currentLikes = item.data.likes || [];
+      const isCurrentlyLiked = currentLikes.some(like => like.userId === walletAddress);
+      const newLikeCount = isCurrentlyLiked ? currentLikes.length - 1 : currentLikes.length + 1;
+
+      // Optimistic update
+      setOptimisticLikes(prev => ({
+        ...prev,
+        [itemId]: !isCurrentlyLiked
+      }));
+      setOptimisticLikeCounts(prev => ({
+        ...prev,
+        [itemId]: newLikeCount
+      }));
+
+      try {
+        await handleLike(itemId);
+        // Success toast with different messages for like/unlike
+        toast.success(isCurrentlyLiked ? "Unliked!" : "Liked!", {
+          icon: isCurrentlyLiked ? "💔" : "❤️",
+          style: {
+            background: "#111",
+            color: isCurrentlyLiked ? "#0ff" : "#f0f"
+          }
+        });
+      } catch (error) {
+        // Revert optimistic update on error
+        setOptimisticLikes(prev => ({
+          ...prev,
+          [itemId]: isCurrentlyLiked
+        }));
+        setOptimisticLikeCounts(prev => ({
+          ...prev,
+          [itemId]: currentLikes.length
+        }));
+        toast.error("Failed to update like", {
+          icon: "⚠️",
+          style: {
+            background: "#111",
+            color: "#f00"
+          }
+        });
+      }
     },
-    [authenticated, handleLike]
+    [authenticated, walletAddress, feeds.content, handleLike]
   );
 
   const renderItem = useCallback(
@@ -115,11 +154,22 @@ export default function Feed() {
           username: "User",
           avatar: null,
         };
-        //console.log("feed item",item)
-      const isLiked =
-        walletAddress &&
+
+      // Determine like state - check optimistic update first, then actual data
+      const optimisticLikeState = optimisticLikes[item.id];
+      const actualIsLiked = walletAddress && 
         item.data.likes?.some((like) => like.userId === walletAddress);
-      const likeCount = item.data.likes?.length || 0;
+      const isLiked = typeof optimisticLikeState !== 'undefined' 
+        ? optimisticLikeState 
+        : actualIsLiked;
+
+      // Determine like count - check optimistic update first, then actual data
+      const optimisticLikeCount = optimisticLikeCounts[item.id];
+      const actualLikeCount = item.data.likes?.length || 0;
+      const likeCount = typeof optimisticLikeCount !== 'undefined'
+        ? optimisticLikeCount
+        : actualLikeCount;
+
       const commentCount = item.data.comments?.length || 0;
       const isProcessing = isProcessingLike[item.id];
       const isExpanded = expandedPost === item.id;
@@ -181,35 +231,14 @@ export default function Feed() {
                   </span>
                 </div>
 
-                {item.type === "post" && (
-                  <div className="mb-3">
-                    <h3 className="text-lg font-medium text-cyan-50 mb-1">
-                      {item.data.title}
-                    </h3>
-                    {item.data.content && (
-                      <p
-                        className={`text-cyan-100 text-sm ${
-                          !isExpanded ? "line-clamp-2" : ""
-                        }`}
-                      >
-                        {item.data.content}
-                      </p>
-                    )}
-                  </div>
-                )}
+           
 
                 <div className="flex items-start gap-2 mb-2">
                   <span className="text-cyan-400 mt-0.5">
-                    {item.type === "tip" ? (
-                      <Gift className="h-5 w-5" />
-                    ) : item.type === "activity" ? (
-                      <Activity className="h-5 w-5" />
-                    ) : (
-                      <Zap className="h-5 w-5" />
-                    )}
+                    <Zap className="h-5 w-5" />
                   </span>
                   <p className="text-cyan-100 text-sm">
-                    {item.data.message || item.data.content || "New activity"}
+                    {item.data.message || item.data.content || "New post"}
                   </p>
                 </div>
 
@@ -223,34 +252,50 @@ export default function Feed() {
                         : "text-cyan-400 hover:text-cyan-300"
                     } ${isProcessing ? "opacity-50 cursor-not-allowed" : ""}`}
                   >
-                    <Heart
-                      className="h-4 w-4"
-                      fill={isLiked ? "currentColor" : "none"}
-                    />
-                    <span>[{likeCount}]</span>
+                    <AnimatePresence mode="wait">
+                      <motion.span
+                        key={`heart-${item.id}-${isLiked}`}
+                        initial={{ scale: 0.8 }}
+                        animate={{ scale: 1 }}
+                        exit={{ scale: 0.8 }}
+                        transition={{ duration: 0.2 }}
+                      >
+                        <Heart
+                          className="h-4 w-4"
+                          fill={isLiked ? "currentColor" : "none"}
+                        />
+                      </motion.span>
+                    </AnimatePresence>
+                    <AnimatePresence mode="wait">
+                      <motion.span
+                        key={`count-${item.id}-${likeCount}`}
+                        initial={{ y: -5, opacity: 0 }}
+                        animate={{ y: 0, opacity: 1 }}
+                        exit={{ y: 5, opacity: 0 }}
+                        transition={{ duration: 0.2 }}
+                      >
+                        [{likeCount}]
+                      </motion.span>
+                    </AnimatePresence>
                   </button>
-                  {item.type === "post" && (
-                    <button
-                      onClick={() => handleExpandPost(item.id)}
-                      className="flex items-center gap-1 text-xs font-mono tracking-wider text-cyan-400 hover:text-cyan-300"
-                    >
-                      <MessageSquare className="h-4 w-4" />
-                      <span>[{commentCount}]</span>
-                    </button>
-                  )}
-                  {item.type === "post" && (
-                    <button
-                      onClick={() => handleViewDetails(item.id)}
-                      className="text-xs font-mono tracking-wider text-cyan-400 hover:text-cyan-300 ml-auto"
-                    >
-                      View Full
-                    </button>
-                  )}
+                  <button
+                    onClick={() => handleExpandPost(item.id)}
+                    className="flex items-center gap-1 text-xs font-mono tracking-wider text-cyan-400 hover:text-cyan-300"
+                  >
+                    <MessageSquare className="h-4 w-4" />
+                    <span>[{commentCount}]</span>
+                  </button>
+                  <button
+                    onClick={() => handleViewDetails(item.id)}
+                    className="text-xs font-mono tracking-wider text-cyan-400 hover:text-cyan-300 ml-auto"
+                  >
+                    View Full
+                  </button>
                
                   <TipButton
                     recipientId={item.data?.authorId || ""}
                     recipientWallet={item.data.authorId|| ""}
-                    postId={item.type === "post" ? item.id : undefined}
+                    postId={item.id}
                   />
                 </div>
               </div>
@@ -305,6 +350,8 @@ export default function Feed() {
       isProcessingLike,
       walletAddress,
       expandedPost,
+      optimisticLikes,
+      optimisticLikeCounts
     ]
   );
 
@@ -343,47 +390,16 @@ export default function Feed() {
           NEURAL_FEED
         </motion.h1>
 
-        <div className="flex border-b border-cyan-400/20 mb-6 relative">
-          <motion.div
-            layoutId="tabIndicator"
-            className="absolute bottom-0 h-0.5 bg-cyan-400"
-            style={{
-              width: `${100 / 4}%`,
-              left: `${
-                ["all", "content", "donations", "activity"].indexOf(activeTab) *
-                (100 / 4)
-              }%`,
-            }}
-            transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
-          />
-
-          {(["all", "content", "donations", "activity"] as FeedType[]).map(
-            (tab) => (
-              <button
-                key={tab}
-                onClick={() => handleTabChange(tab)}
-                className={`px-4 py-3 text-sm font-medium relative uppercase tracking-wider ${
-                  activeTab === tab
-                    ? "text-cyan-400"
-                    : "text-gray-400 hover:text-cyan-300"
-                }`}
-              >
-                {tab}
-              </button>
-            )
-          )}
-        </div>
-
         <div className="space-y-6">
           {currentFeedItems.length > 0
             ? currentFeedItems.map(renderItem)
             : !loading && <EmptyFeedView />}
         </div>
 
-        {hasMore[activeTab] && (
+        {hasMore.content && (
           <LoadMoreButton
             loading={loading}
-            onClick={() => fetchMore(activeTab)}
+            onClick={() => fetchMore("content")}
           />
         )}
       </div>

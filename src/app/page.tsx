@@ -43,7 +43,7 @@ const Index = () => {
   const [glitchEffect, setGlitchEffect] = useState(false);
   const [userStakingPower, setUserStakingPower] = useState(275);
 
-
+  console.log("user",user)
 
 
 
@@ -149,7 +149,7 @@ const Index = () => {
         glitchEffect={glitchEffect}
         connectWallet={connectWallet}
         disconnectWallet={disconnectWallet}
-        userStakingPower={userStakingPower}
+        userStakingPower={user?.stakingPower}
         walletAddress={walletAddress}
         erc20Contracts={[{contractAddress:"0x82B9e52b26A2954E113F94Ff26647754d5a4247D",symbol:"MXNB",decimal:6}]}
       />
@@ -189,26 +189,15 @@ const Index = () => {
                   SUPPORT_THE_DIGITAL_REBELLION • EMPOWER_CYBER_ARTISTS
                 </p>
               </div>
-
+              <ActivityFeed />
               <Feed/>
             </motion.div>
-
-            <DonationFeed donations={donations} />
-            <ActivityFeed />
-            <div className="mt-12">
-              <CommentSection 
-                comments={[]}
-                onAddComment={(content) => console.log('New comment:', content)}
-                onReact={(commentId, reaction) => console.log('Reaction:', commentId, reaction)}
-                walletConnected={isAuthenticated && isRegistered}
-              />
-            </div>
           </div>
 
           {/* Sidebar */}
           <div className="space-y-8">
             <Leaderboard artists={artists} />
-            {isAuthenticated && isRegistered && <UserStats userStakingPower={userStakingPower} />}
+            {isAuthenticated && isRegistered && <UserStats wallet={walletAddress} />}
             {isAuthenticated && isRegistered && <DailyMissions />}
           </div>
         </motion.div>
