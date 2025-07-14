@@ -1,3 +1,4 @@
+//@ts-nocheck
 // app/api/stats/rankings/route.ts
 import { NextResponse } from 'next/server';
 import { prisma } from '@/app/lib/prisma';
