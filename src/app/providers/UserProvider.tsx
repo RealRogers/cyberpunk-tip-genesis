@@ -186,6 +186,19 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
+      toast('Remember to load ETH on Arbitrum Sepolia - we are not gasless yet!', {
+        icon: '⛽',
+        style: {
+          background: '#111',
+          color: '#f59e0b',
+          border: '1px solid #f59e0b',
+          fontSize: '0.9rem'
+        },
+        duration: 8000,
+        position: 'top-center'
+      });
+      
+
       const userData = await userResponse.json();
       const artistData = artistResponse.ok ? await artistResponse.json() : null;
 
