@@ -39,6 +39,8 @@ const Header: React.FC<HeaderProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [isDepositModalOpen, setIsDepositModalOpen] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
+  const [stakingPower, setStakingPower] = useState<number>(userStakingPower || 0);
+
 
   const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -75,6 +77,29 @@ const Header: React.FC<HeaderProps> = ({
       document.removeEventListener('touchstart', handleOutsideTouch);
     };
   }, [isHovering]);
+
+
+  useEffect(() => {
+    const fetchStakingPower = async () => {
+      if (!walletAddress) return;
+  
+      try {
+        const res = await fetch(`/api/user/${walletAddress}`);
+        const data = await res.json();
+        console.log("data",data)
+        
+          setStakingPower(data.stakingPower);
+      
+      } catch (err) {
+        console.error('Error fetching staking power:', err);
+      }
+    };
+  
+    if (authenticated && walletAddress) {
+      fetchStakingPower();
+    }
+  }, [authenticated, walletAddress]);
+  
 
   const fetchUserId = async () => {
     try {
@@ -194,7 +219,7 @@ const Header: React.FC<HeaderProps> = ({
                   transition={{ delay: 0.5, type: "spring" }}
                 >
                   <Shield className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-green-400" />
-                  <span className="text-xs sm:text-sm font-mono text-green-400">{userStakingPower} SP</span>
+                  <span className="text-xs sm:text-sm font-mono text-green-400">{stakingPower} SP</span>
                 </motion.div>
 
                 <motion.button
