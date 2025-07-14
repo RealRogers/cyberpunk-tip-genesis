@@ -42,9 +42,6 @@ const Index = () => {
   const [glitchEffect, setGlitchEffect] = useState(false);
   const [userStakingPower, setUserStakingPower] = useState(275);
 
-
-
-
   const handleOpenModal = (artist: Artist) => {
     if (!isAuthenticated) {
       toast.error('Please connect your wallet first', {
