@@ -3,7 +3,6 @@
 import React, { useState,useEffect } from 'react';
 import { Toaster, toast } from 'react-hot-toast';
 import { motion } from 'framer-motion';
-import { useRouter } from 'next/navigation';
 import { Plus } from 'lucide-react';
 
 import { artistsData, donationsData, Artist, Donation } from '../data/mockData';
@@ -43,7 +42,6 @@ const Index = () => {
   const [glitchEffect, setGlitchEffect] = useState(false);
   const [userStakingPower, setUserStakingPower] = useState(275);
 
-  console.log("user",user)
 
 
 
