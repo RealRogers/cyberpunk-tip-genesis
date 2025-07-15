@@ -1,112 +1,153 @@
-# 🚀 Cyberpunk Tip Genesis
+const cyberpunkTipGenesisStack = `
+# 🧠 Cyberpunk Tip Genesis – Tech Stack Overview
 
-Una plataforma social para artistas digitales donde los fans pueden apoyar a sus creadores favoritos mediante propinas (tips) y participar en una comunidad gamificada.
+This document summarizes the core technologies used in the [Cyberpunk Tip Genesis](https://github.com/RealRogers/cyberpunk-tip-genesis) dApp.
 
-## 🌟 Características Principales
+---
 
-- 💰 Sistema de propinas integrado
-- 🏆 Sistema de logros y recompensas
-- 🏅 Clasificaciones y eventos temporales
-- 💬 Sección de comentarios interactiva
-- 🎨 Interfaz con temática cyberpunk
-- 📱 Diseño responsive
+## 🌐 Frontend
 
-## 🚀 Comenzando
+- **Framework:** [React](https://reactjs.org/) (v18), [Next.js](https://nextjs.org/) (v14)
+- **Language:** TypeScript
+- **UI Libraries:**
+  - [Radix UI](https://www.radix-ui.com/) \`@radix-ui/react-\*
+  - [shadcn/ui](https://ui.shadcn.com/)
+  - [vaul](https://github.com/emilkowalski/vaul)
+- **Styling:**
+  - [Tailwind CSS](https://tailwindcss.com/)
+  - Plugins: \`tailwindcss-animate\`, \`tailwind-merge\`
 
-### Requisitos Previos
+---
 
-- Node.js (v16 o superior)
-- npm (v8 o superior) o yarn
-- Git
+## 🔐 Smart Contracts
 
-### Instalación
+- **Language:** Solidity
+- **Platform:** Ethereum / EVM-compatible chains
+- **Contracts:**
+  - [OpenZeppelin](https://openzeppelin.com/)
+  - [Uniswap V3](https://docs.uniswap.org/) (\`@uniswap/v3-core\`, \`@uniswap/v3-periphery\`)
 
-1. Clona el repositorio:
-   ```bash
-   git clone https://github.com/tu-usuario/cyberpunk-tip-genesis.git
-   cd cyberpunk-tip-genesis
-   ```
+---
 
-2. Instala las dependencias:
-   ```bash
-   npm install
-   # o
-   yarn install
-   ```
+## 🔗 Blockchain Interaction
 
-3. Configura las variables de entorno:
-   Crea un archivo `.env` en la raíz del proyecto con las siguientes variables:
-   ```env
-   VITE_API_URL=tu_api_url
-   VITE_APP_NAME="Cyberpunk Tip Genesis"
-   ```
+- **Library:** [ethers.js](https://docs.ethers.org/v5/)
+- **Development Framework:** [Hardhat](https://hardhat.org/)
+  - Plugins: \`@nomicfoundation/hardhat-toolbox\`, \`hardhat-ethers\`, \`hardhat-uniswap\`
 
-4. Inicia el servidor de desarrollo:
-   ```bash
-   npm run dev
-   # o
-   yarn dev
-   ```
+---
 
-5. Abre tu navegador en:
-   ```
-   http://localhost:5173
-   ```
+## 🛠 Backend / Auth
 
-## 🛠️ Estructura del Proyecto
+- **ORM:** [Prisma](https://www.prisma.io/) (PostgreSQL)
+- **Database:** PostgreSQL
+- **Backend Service:** [Supabase](https://supabase.com/)
+- **Authentication:** [Privy](https://www.privy.io/) \`@privy-io/react-auth\`
 
-```
-src/
-├── components/       # Componentes reutilizables
-├── pages/            # Componentes de páginas
-├── types/            # Definiciones de tipos TypeScript
-├── hooks/            # Custom React Hooks
-├── lib/              # Utilidades y configuraciones
-├── data/             # Datos mock y fixtures
-└── styles/           # Estilos globales
-```
+---
 
-## 📚 Documentación Adicional
+## 🚀 Deployment
 
-- [Guía de Componentes](./docs/COMPONENTS.md)
-- [API Documentation](./docs/API.md)
-- [Guía de Estilo](./docs/STYLE_GUIDE.md)
-- [Guía de Contribución](./docs/CONTRIBUTING.md)
-- [Código de Conducta](./docs/CODE_OF_CONDUCT.md)
+- **Platform:** [Lovable](https://www.lovable.dev/)
+- **Build Commands:**
+  - \`next build\`
+  - \`next start\`
 
-## 🤝 Contribuir
+---
 
-¡Las contribuciones son bienvenidas! Por favor, lee nuestra [guía de contribución](./docs/CONTRIBUTING.md) para más detalles.
+## ⚙️ Tooling
 
-## 📄 Licencia
+- **Bundler (optional):** [Vite](https://vitejs.dev/)
+- **Linter:** ESLint (Next.js configuration)
+- **CSS Tooling:** PostCSS, Autoprefixer
 
-Este proyecto está bajo la Licencia MIT. Ver el archivo [LICENSE](./LICENSE) para más detalles.
+---
 
-## ✨ Agradecimientos
+> ✅ All packages and configurations are listed in the repo's \`package.json\`, \`prisma/schema.prisma\`, and the project README.
+`;
 
-- Equipo de desarrollo
-- Comunidad de código abierto
-- Todos los contribuyentes
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+const readme = `
+# 📦 Cyberpunk Tip Genesis
 
-## What technologies are used for this project?
+A smart contract & full-stack NFT minting system ("Tips") powered by ArtistFi.sol and modern backend services.
 
-This project is built with:
+---
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+## ✅ Environment Setup
 
-## How can I deploy this project?
+Copy the file \`env.example\` to \`.env\` and fill in the following values:
 
-Simply open [Lovable](https://lovable.dev/projects/612faadd-3b24-4fcf-95e9-41a6c6742a34) and click on Share -> Publish.
+### Database & Supabase
+\`\`\`
+DATABASE_URL=                   # For connection pooling
+DIRECT_URL=                     # Direct DB connection (e.g. for migrations)
+NEXT_PUBLIC_SUPABASE_URL=       # Supabase project URL
+NEXT_PUBLIC_SUPABASE_ANON_KEY=  # Supabase anon (public) API key
+\`\`\`
 
-## Can I connect a custom domain to my Lovable project?
+### Auth & Privy
+\`\`\`
+PRIVY_SECRET=
+NEXT_PUBLIC_PRIVY_APP_ID=
+NEXT_PUBLIC_PRIVY_CLIENT_ID=
+\`\`\`
 
-Yes, you can!
+### Juno Payments
+\`\`\`
+JUNO_API_KEY=
+JUNO_API_SECRET=
+JUNO_API_URL=https://stage.buildwithjuno.com
+JUNO_RECEIVER_NAME=
+\`\`\`
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+### General App Config
+\`\`\`
+NEXT_PUBLIC_API_URL=            # Your production frontend/back‑end URL
+NEXT_PUBLIC_PICS=               # Base URL for images/storage
+\`\`\`
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+---
+
+## 🧩 File Overview
+
+### ArtistFi.sol
+A Solidity contract that supports:
+- **Artist registration**
+- **Minting "Tip" NFTs**
+- **Royalty fee collection and withdrawal**
+
+### Backend + Frontend
+- Uses **Supabase** for database, authentication, and realtime features.
+- Uses **Privy** for secure login/auth flows.
+- Uses **Juno** for payment processing and fund transfers to artists.
+- JS/TS frontend interacts with ArtistFi via contract, Supabase for data, Juno for payments.
+
+---
+
+## 🚀 Usage
+
+1. Populate your \`.env\` with values above.
+2. Deploy \`ArtistFi.sol\` using Hardhat / Truffle / Remix.
+3. Copy the deployed contract address into your backend/frontend config.
+4. Run migrations using \`DIRECT_URL\`.
+5. Start full-stack app — it will:
+   - Allow artists to register (via Privy)
+   - Enable minting Tip NFTs
+   - Accept payments (via Juno)
+   - Store metadata and state in Supabase
+
+---
+
+## 🛠️ Requirements
+
+- Ethereum-compatible wallet + funds for deployment/minting
+- Supabase project
+- Privy account/app
+- Juno API credentials
+
+---
+
+## 📄 License
+
+MIT
+`;
