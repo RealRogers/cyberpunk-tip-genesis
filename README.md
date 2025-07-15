@@ -1,7 +1,7 @@
-const cyberpunkTipGenesisStack = `
+
 # 🧠 Cyberpunk Tip Genesis – Tech Stack Overview
 
-This document summarizes the core technologies used in the [Cyberpunk Tip Genesis](https://github.com/RealRogers/cyberpunk-tip-genesis) dApp.
+This document summarizes the core technologies used in the [Cyberpunk Tip Genesis](https://cyberpunk-tip-genesis-beta.vercel.app/) dApp.
 
 ---
 
@@ -150,4 +150,4 @@ A Solidity contract that supports:
 ## 📄 License
 
 MIT
-`;
+
