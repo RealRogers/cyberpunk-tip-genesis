@@ -10,12 +10,12 @@ This document summarizes the core technologies used in the [Cyberpunk Tip Genesi
 - **Framework:** [React](https://reactjs.org/) (v18), [Next.js](https://nextjs.org/) (v14)
 - **Language:** TypeScript
 - **UI Libraries:**
-  - [Radix UI](https://www.radix-ui.com/) \`@radix-ui/react-\*
+  - [Radix UI](https://www.radix-ui.com/) `@radix-ui/react-*
   - [shadcn/ui](https://ui.shadcn.com/)
   - [vaul](https://github.com/emilkowalski/vaul)
 - **Styling:**
   - [Tailwind CSS](https://tailwindcss.com/)
-  - Plugins: \`tailwindcss-animate\`, \`tailwind-merge\`
+  - Plugins: `tailwindcss-animate`, `tailwind-merge`
 
 ---
 
@@ -25,7 +25,7 @@ This document summarizes the core technologies used in the [Cyberpunk Tip Genesi
 - **Platform:** Ethereum / EVM-compatible chains
 - **Contracts:**
   - [OpenZeppelin](https://openzeppelin.com/)
-  - [Uniswap V3](https://docs.uniswap.org/) (\`@uniswap/v3-core\`, \`@uniswap/v3-periphery\`)
+  - [Uniswap V3](https://docs.uniswap.org/) (`@uniswap/v3-core`, `@uniswap/v3-periphery`)
 
 ---
 
@@ -33,7 +33,7 @@ This document summarizes the core technologies used in the [Cyberpunk Tip Genesi
 
 - **Library:** [ethers.js](https://docs.ethers.org/v5/)
 - **Development Framework:** [Hardhat](https://hardhat.org/)
-  - Plugins: \`@nomicfoundation/hardhat-toolbox\`, \`hardhat-ethers\`, \`hardhat-uniswap\`
+  - Plugins: `@nomicfoundation/hardhat-toolbox`, `hardhat-ethers`, `hardhat-uniswap`
 
 ---
 
@@ -42,7 +42,7 @@ This document summarizes the core technologies used in the [Cyberpunk Tip Genesi
 - **ORM:** [Prisma](https://www.prisma.io/) (PostgreSQL)
 - **Database:** PostgreSQL
 - **Backend Service:** [Supabase](https://supabase.com/)
-- **Authentication:** [Privy](https://www.privy.io/) \`@privy-io/react-auth\`
+- **Authentication:** [Privy](https://www.privy.io/) `@privy-io/react-auth`
 
 ---
 
@@ -50,8 +50,8 @@ This document summarizes the core technologies used in the [Cyberpunk Tip Genesi
 
 - **Platform:** [Lovable](https://www.lovable.dev/)
 - **Build Commands:**
-  - \`next build\`
-  - \`next start\`
+  - `next build`
+  - `next start`
 
 ---
 
@@ -63,7 +63,7 @@ This document summarizes the core technologies used in the [Cyberpunk Tip Genesi
 
 ---
 
-> ✅ All packages and configurations are listed in the repo's \`package.json\`, \`prisma/schema.prisma\`, and the project README.
+> ✅ All packages and configurations are listed in the repo's `package.json`, `prisma/schema.prisma`, and the project README.
 `;
 
 const readme = `
@@ -75,36 +75,36 @@ A smart contract & full-stack NFT minting system ("Tips") powered by ArtistFi.so
 
 ## ✅ Environment Setup
 
-Copy the file \`env.example\` to \`.env\` and fill in the following values:
+Copy the file `env.example` to `.env` and fill in the following values:
 
 ### Database & Supabase
-\`\`\`
+```
 DATABASE_URL=                   # For connection pooling
 DIRECT_URL=                     # Direct DB connection (e.g. for migrations)
 NEXT_PUBLIC_SUPABASE_URL=       # Supabase project URL
 NEXT_PUBLIC_SUPABASE_ANON_KEY=  # Supabase anon (public) API key
-\`\`\`
+```
 
 ### Auth & Privy
-\`\`\`
+```
 PRIVY_SECRET=
 NEXT_PUBLIC_PRIVY_APP_ID=
 NEXT_PUBLIC_PRIVY_CLIENT_ID=
-\`\`\`
+```
 
 ### Juno Payments
-\`\`\`
+```
 JUNO_API_KEY=
 JUNO_API_SECRET=
 JUNO_API_URL=https://stage.buildwithjuno.com
 JUNO_RECEIVER_NAME=
-\`\`\`
+```
 
 ### General App Config
-\`\`\`
+```
 NEXT_PUBLIC_API_URL=            # Your production frontend/back‑end URL
 NEXT_PUBLIC_PICS=               # Base URL for images/storage
-\`\`\`
+```
 
 ---
 
@@ -126,10 +126,10 @@ A Solidity contract that supports:
 
 ## 🚀 Usage
 
-1. Populate your \`.env\` with values above.
-2. Deploy \`ArtistFi.sol\` using Hardhat / Truffle / Remix.
+1. Populate your `.env` with values above.
+2. Deploy `ArtistFi.sol` using Hardhat / Truffle / Remix.
 3. Copy the deployed contract address into your backend/frontend config.
-4. Run migrations using \`DIRECT_URL\`.
+4. Run migrations using `DIRECT_URL`.
 5. Start full-stack app — it will:
    - Allow artists to register (via Privy)
    - Enable minting Tip NFTs
