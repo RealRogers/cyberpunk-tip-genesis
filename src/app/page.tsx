@@ -1,9 +1,10 @@
 //@ts-nocheck
 "use client"
-import React, { useState,useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Toaster, toast } from 'react-hot-toast';
 import { motion } from 'framer-motion';
 import { Plus } from 'lucide-react';
+import { ethers } from 'ethers';
 
 import { artistsData, donationsData, Artist, Donation } from '../data/mockData';
 import Header from '../components/Header';
@@ -20,6 +21,8 @@ import CommentSection from '../components/CommentSection';
 import ContentModal from '../components/ContentModal';
 import Feed from "../components/Feed";
 import { useUser } from '../app/providers/UserProvider';
+import abi from "../abi/ArtistFi.json"
+import { useWallets } from '@privy-io/react-auth';
 
 const Index = () => {
   const [isContentModalOpen, setIsContentModalOpen] = useState(false);
@@ -34,6 +37,8 @@ const Index = () => {
     redirectToRegistration,
     walletAddress
   } = useUser();
+  const { wallets } = useWallets();
+  const wallet = wallets[0];
 
   const [artists, setArtists] = useState<Artist[]>(artistsData);
   const [donations, setDonations] = useState<Donation[]>(donationsData);
@@ -41,6 +46,28 @@ const Index = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [glitchEffect, setGlitchEffect] = useState(false);
   const [userStakingPower, setUserStakingPower] = useState(275);
+  const [tvl, setTvl] = useState('0.00');
+
+  useEffect(() => {
+      const fetchTVL = async () => {
+        try {
+          const provider = new ethers.providers.Web3Provider(window.ethereum);
+          const contract = new ethers.Contract('0xb83ac4a3ece3dd7d09ec5a8641c701ebf96f08b0', abi, provider);
+          const rawTvl = await contract.getTotalTVL();
+          console.log("raw",rawTvl)
+          const formatted = ethers.utils.formatUnits(rawTvl, 6);
+          setTvl(parseFloat(formatted).toFixed(2));
+        } catch (error) {
+          console.error('Failed to fetch TVL:', error);
+        }
+      };
+      const interval = setInterval(fetchTVL, 3000);
+
+      // Optional: Fetch immediately on mount
+      fetchTVL();
+    
+      return () => clearInterval(interval);
+  }, [wallet]);
 
   const handleOpenModal = (artist: Artist) => {
     if (!isAuthenticated) {
@@ -182,6 +209,9 @@ const Index = () => {
                 </motion.h1>
                 <p className="text-xl text-gray-300 font-mono">
                   SUPPORT_THE_DIGITAL_REBELLION • EMPOWER_CYBER_ARTISTS
+                </p>
+                <p className="text-2xl text-cyan-400 font-bold mt-2">
+                  TOTAL VALUE LOCKED: {tvl} MXNB
                 </p>
               </div>
               <ActivityFeed />

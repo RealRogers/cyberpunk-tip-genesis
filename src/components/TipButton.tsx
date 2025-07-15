@@ -1,12 +1,14 @@
+//@ts-nocheck
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Zap, X } from "lucide-react";
 import { useWallets } from "@privy-io/react-auth";
 import { ethers } from "ethers";
 import { toast } from "react-hot-toast";
 import ModalPortal from "./ModalPortal";
+import abi from "../abi/ArtistFi.json"; // Import the ABI JSON file (save the provided JSON as abi.json)
 
 interface TipButtonProps {
   recipientId: string;
@@ -20,12 +22,47 @@ export default function TipButton({ recipientId, recipientWallet, postId }: TipB
   const [message, setMessage] = useState("");
   const [selectedToken] = useState("MXNB");
   const [loading, setLoading] = useState(false);
+  const [needsApproval, setNeedsApproval] = useState(true);
   const { wallets } = useWallets();
   const wallet = wallets[0];
 
   const tokenOptions = [
     { address: "0x82B9e52b26A2954E113F94Ff26647754d5a4247D", symbol: "MXNB", decimal: 6 },
   ];
+
+  const artistFi = { address: "0xb83ac4a3ece3dd7d09ec5a8641c701ebf96f08b0" };
+
+  useEffect(() => {
+    if (isOpen && amount && !isNaN(parseFloat(amount))) {
+      checkAllowance();
+    }
+  }, [amount, isOpen]);
+
+  const checkAllowance = async () => {
+    if (!wallet?.address || !amount || isNaN(parseFloat(amount))) return;
+
+    try {
+      const provider = new ethers.providers.Web3Provider(await wallet.getEthereumProvider());
+      const signer = provider.getSigner();
+
+      const token = tokenOptions.find((t) => t.symbol === selectedToken);
+      if (!token) throw new Error("Invalid token selected");
+
+      const erc20Abi = [
+        "function allowance(address owner, address spender) view returns (uint256)"
+      ];
+
+      const erc20 = new ethers.Contract(token.address, erc20Abi, signer);
+      const decimals = token.decimal;
+      const parsedAmount = ethers.utils.parseUnits(amount, decimals);
+
+      const allowance = await erc20.allowance(wallet.address, artistFi.address);
+      setNeedsApproval(allowance.lt(parsedAmount));
+    } catch (error) {
+      console.error("Error checking allowance:", error);
+      setNeedsApproval(true);
+    }
+  };
 
   const checkArtistWallet = async () => {
     try {
@@ -67,7 +104,7 @@ export default function TipButton({ recipientId, recipientWallet, postId }: TipB
     }
   };
 
-  const handleTip = async () => {
+  const handleApprove = async () => {
     if (!amount || isNaN(parseFloat(amount))) {
       toast.error("Enter a valid amount");
       return;
@@ -81,17 +118,45 @@ export default function TipButton({ recipientId, recipientWallet, postId }: TipB
       const token = tokenOptions.find((t) => t.symbol === selectedToken);
       if (!token) throw new Error("Invalid token selected");
 
-      const erc20 = new ethers.Contract(
-        token.address,
-        ["function transfer(address to, uint256 amount) returns (bool)"],
-        signer
-      );
+      const erc20Abi = [
+        "function approve(address spender, uint256 amount) returns (bool)"
+      ];
+
+      const erc20 = new ethers.Contract(token.address, erc20Abi, signer);
+      const decimals = token.decimal;
+      const parsedAmount = ethers.utils.parseUnits(amount, decimals);
+
+      const approveTx = await erc20.approve(artistFi.address, parsedAmount);
+      await approveTx.wait();
+      
+      toast.success("Approval successful!");
+      setNeedsApproval(false);
+    } catch (error: any) {
+      console.error("Approval failed:", error);
+      toast.error(error.message || "Failed to approve tokens");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleTip = async () => {
+    setLoading(true);
+    try {
+      const provider = new ethers.providers.Web3Provider(await wallet.getEthereumProvider());
+      const signer = provider.getSigner();
+
+      const token = tokenOptions.find((t) => t.symbol === selectedToken);
+      if (!token) throw new Error("Invalid token selected");
 
       const decimals = token.decimal;
-      const tx = await erc20.transfer(
-        recipientWallet,
-        ethers.utils.parseUnits(amount, decimals)
-      );
+      const parsedAmount = ethers.utils.parseUnits(amount, decimals);
+
+      // Create tipping contract instance using the imported ABI
+      const tippingContract = new ethers.Contract(artistFi.address, abi, signer);
+
+      // Call tip on the contract (transfers tokens to contract via transferFrom internally)
+      const tx = await tippingContract.tip(recipientWallet, parsedAmount);
+      await tx.wait(); // Wait for confirmation
 
       const response = await fetch("/api/donations", {
         method: "POST",
@@ -173,7 +238,10 @@ export default function TipButton({ recipientId, recipientWallet, postId }: TipB
                       <input
                         type="number"
                         value={amount}
-                        onChange={(e) => setAmount(e.target.value)}
+                        onChange={(e) => {
+                          setAmount(e.target.value);
+                          setNeedsApproval(true); // Reset approval state when amount changes
+                        }}
                         placeholder="0.00"
                         className="flex-1 bg-transparent px-4 py-3 text-base text-cyan-100 outline-none"
                         disabled={loading}
@@ -198,8 +266,8 @@ export default function TipButton({ recipientId, recipientWallet, postId }: TipB
 
                   <div className="pt-2">
                     <button
-                      onClick={handleTip}
-                      disabled={loading}
+                      onClick={needsApproval ? handleApprove : handleTip}
+                      disabled={loading || !amount || isNaN(parseFloat(amount))}
                       className={`w-full py-3 bg-gradient-to-r from-cyan-600 to-pink-600 text-sm font-mono font-bold text-white rounded-lg transition-all flex items-center justify-center gap-2 ${
                         loading ? "opacity-60 cursor-not-allowed" : "hover:from-cyan-700 hover:to-pink-700"
                       }`}
@@ -213,7 +281,7 @@ export default function TipButton({ recipientId, recipientWallet, postId }: TipB
                       ) : (
                         <>
                           <Zap className="w-4 h-4" />
-                          CONFIRM TIP
+                          {needsApproval ? "APPROVE" : "CONFIRM TIP"}
                         </>
                       )}
                     </button>
